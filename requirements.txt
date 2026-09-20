@@ -1,0 +1,22 @@
+# NEELDRIK prototype — SIH26143, Team HackSmiths
+#
+# The CORE set is everything the prototype needs. No GPU, no build step.
+# The OPTIONAL set swaps individual components for the full stack named in the
+# PPT; the app auto-detects each one and nothing else changes.
+
+# ---- core (required) ----
+numpy>=1.24              # arrays; the U-Net runs entirely on this
+scipy>=1.10              # filters, morphology, connected components
+pillow>=9.5              # image decode/encode
+opencv-python-headless>=4.8   # resize, contour extraction
+starlette>=0.37          # web framework (this is FastAPI's own core)
+uvicorn>=0.23            # the HTTP server
+python-multipart>=0.0.6  # parses the uploaded file (used by Starlette)
+PyJWT>=2.8               # signed session tokens
+
+# ---- optional: the full stated stack ----
+# fastapi>=0.110         # adds interactive API docs at /docs
+# torch>=2.0             # runs the PyTorch twin of the same U-Net
+# torchvision>=0.15
+# rasterio>=1.3          # GeoTIFF + CRS -> real km², real map coordinates
+# psycopg2-binary>=2.9   # PostgreSQL + PostGIS instead of SQLite

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<script>
+/* Applied before first paint so the theme never flashes. */
+(function(){try{
+  var t=localStorage.getItem('nd-theme');
+  document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light');
+}catch(e){document.documentElement.setAttribute('data-theme','light');}})();
+</script>
+
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#EAF1F8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#050B18" media="(prefers-color-scheme: dark)">
+<title>NeelDrik — satellite oil-spill detection</title>
+<link rel="icon" href="/static/img/favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/app.css?v=202609201907">
+</head>
+<body class="landing">
+
+<header class="sitenav" id="sitenav">
+  <a class="brand" href="#top">
+    <img class="brand-mark" src="/static/img/neeldrik-mark.png" alt="NeelDrik logo">
+    <div>
+      <div class="brand-name">NeelDrik</div>
+      <div class="brand-sub">Safer seas. Clearer tomorrows.</div>
+    </div>
+  </a>
+
+  <nav class="sitelinks" id="sitelinks" aria-label="Primary">
+    <a href="#how">How it works</a>
+    <a href="#capabilities">Capabilities</a>
+    <a href="#evidence">Evidence</a>
+    <a class="btn sm" href="#signin">Sign in</a>
+  </nav>
+
+  <button class="themetoggle" id="themetoggle" aria-label="Switch theme" title="Switch theme"><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+
+  <button class="burger" id="navburger" aria-label="Open menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+
+<div class="auth-wrap" id="top">
+
+  <section class="auth-art">
+    <canvas id="waves"></canvas>
+
+    <div class="auth-lede">
+      <span class="eyebrow"><i></i>Sentinel-1 SAR · India's EEZ</span>
+      <h1>Satellite oil-spill detection, with the evidence attached.</h1>
+      <p>Upload a Sentinel-1 SAR scene. A 5-class U-Net separates oil from
+         look-alikes, extracts the slick boundary, and returns a
+         confidence-scored verdict you can defend — or says plainly when it
+         cannot judge.</p>
+    </div>
+
+    <div class="auth-facts">
+      <div><span class="n" id="f-acc">—</span><span class="l">spill precision</span></div>
+      <div><span class="n" id="f-par">—</span><span class="l">parameters</span></div>
+      <div><span class="n">5</span><span class="l">segmentation classes</span></div>
+      <div><span class="n" id="f-rt">—</span><span class="l">runtime</span></div>
+    </div>
+  </section>
+
+  <section class="auth-panel" id="signin">
+    <div class="auth-card">
+      <h2 id="ttl">Sign in</h2>
+      <div class="sub" id="sub">Access the detection console.</div>
+
+      <div class="tabs">
+        <button id="tab-in" class="on" type="button">Sign in</button>
+        <button id="tab-up" type="button">Create account</button>
+      </div>
+
+      <div class="msg" id="msg"></div>
+
+      <form id="form" autocomplete="on">
+        <div class="field only-up hidden">
+          <label for="name">Full name</label>
+          <input id="name" name="name" type="text" autocomplete="name" placeholder="A. Nair">
+        </div>
+        <div class="field only-up hidden">
+          <label for="org">Organisation <span class="dimmer">(optional)</span></label>
+          <input id="org" name="org" type="text" autocomplete="organization"
+                 placeholder="Indian Coast Guard">
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="email"
+                 placeholder="officer@agency.gov.in" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password"
+                 autocomplete="current-password" placeholder="At least 8 characters" required>
+        </div>
+        <button class="btn" id="go" type="submit">Sign in</button>
+      </form>
+
+      <div class="privacy-note">
+        <strong>Privacy.</strong> Passwords are stored only as a salted
+        PBKDF2-HMAC-SHA256 hash — never in plain text. Sessions use a signed
+        JWT that expires after 8 hours. Every detection is scoped to your
+        account, and you can erase all of your uploads from the Account page.
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<section class="strip" id="how">
+  <h2 class="strip-title">How a scene becomes a verdict</h2>
+  <p class="strip-lede">Five stages. Only one of them is a neural network —
+     the rest is signal processing, physics, and deliberate refusal.</p>
+
+  <ol class="flow">
+    <li><span class="step">01</span><h3>Domain gate</h3>
+      <p>Rules decide whether the upload is really SAR. Anything else is
+         refused outright rather than guessed at.</p></li>
+    <li><span class="step">02</span><h3>Preprocess</h3>
+      <p>Robust median/MAD normalisation, a Lee speckle filter, and a texture
+         channel measured <i>before</i> filtering.</p></li>
+    <li><span class="step">03</span><h3>U-Net</h3>
+      <p>A 5-class encoder–decoder labels every pixel: sea, oil, look-alike,
+         ship, land.</p></li>
+    <li><span class="step">04</span><h3>Decide</h3>
+      <p>Calibrated thresholds, connected components, and a wind plausibility
+         check that can only ever weaken a call.</p></li>
+    <li><span class="step">05</span><h3>Drift</h3>
+      <p>Lagrangian transport — current plus 3% of wind, Coriolis, RK4 — run
+         backwards to estimate the source.</p></li>
+  </ol>
+</section>
+
+<section class="strip alt" id="capabilities">
+  <h2 class="strip-title">What it does</h2>
+  <div class="cap-grid">
+    <article class="cap">
+      <div class="cap-ico" style="--c:var(--aurora-1)">◎</div>
+      <h3>Detects, and admits doubt</h3>
+      <p>Oil and look-alikes genuinely overlap in SAR. Ambiguous scenes are
+         routed to an analyst as <b>NEEDS REVIEW</b> rather than forced into a
+         wrong answer.</p>
+    </article>
+    <article class="cap">
+      <div class="cap-ico" style="--c:var(--aurora-2)">⟳</div>
+      <h3>Back-tracks the source</h3>
+      <p>Deterministic physics, verified against ten closed-form solutions.
+         A known release point is recovered to within 200 metres.</p>
+    </article>
+    <article class="cap">
+      <div class="cap-ico" style="--c:var(--aurora-4)">◈</div>
+      <h3>Shows its working</h3>
+      <p>Every verdict carries a reason trail — which threshold decided it,
+         what the wind was, how coherent the region looked.</p>
+    </article>
+    <article class="cap">
+      <div class="cap-ico" style="--c:var(--aurora-3)">⬢</div>
+      <h3>Exports what responders need</h3>
+      <p>Slick boundaries as GeoJSON, overlays as PNG, and a full JSON record
+         of the analysis for the case file.</p>
+    </article>
+  </div>
+</section>
+
+<section class="strip" id="evidence">
+  <h2 class="strip-title">Measured, not claimed</h2>
+  <p class="strip-lede">The best published oil-spill IoU on this problem is
+     53.79%. A system claiming perfection is claiming to have doubled the
+     state of the art.</p>
+  <div class="ev-grid">
+    <div class="ev"><span class="n" id="e-prec">95.4%</span><span class="l">precision, held-out scenes</span></div>
+    <div class="ev"><span class="n" id="e-rec">97.6%</span><span class="l">recall</span></div>
+    <div class="ev"><span class="n">10 / 10</span><span class="l">drift physics checks pass</span></div>
+    <div class="ev"><span class="n">&lt;200 m</span><span class="l">back-track error, known source</span></div>
+  </div>
+</section>
+
+<footer class="appfoot sitefoot">
+  <div class="foot-grid">
+    <div class="foot-brand">
+      <div class="brand brand-sm">
+        <img class="brand-mark" src="/static/img/neeldrik-mark.png" alt="">
+        <div>
+          <div class="brand-name">NeelDrik</div>
+          <div class="brand-sub">Safer seas. Clearer tomorrows.</div>
+        </div>
+      </div>
+      <p class="foot-note">
+        Satellite oil-spill detection and drift modelling for India's
+        Exclusive Economic Zone, built on Copernicus Sentinel-1 SAR.
+      </p>
+    </div>
+    <div>
+      <h4>Explore</h4>
+      <a href="#how">How it works</a>
+      <a href="#capabilities">Capabilities</a>
+      <a href="#evidence">Evidence</a>
+      <a href="#signin">Sign in</a>
+    </div>
+    <div>
+      <h4>Data sources</h4>
+      <a href="https://dataspace.copernicus.eu/" target="_blank" rel="noopener">Copernicus Sentinel-1</a>
+      <a href="https://zenodo.org/records/13761290" target="_blank" rel="noopener">Training dataset</a>
+      <a href="https://www.emsa.europa.eu/csn-menu.html" target="_blank" rel="noopener">EMSA CleanSeaNet</a>
+    </div>
+  </div>
+  <div class="foot-bar">
+    <span>© 2026 Team HackSmiths · NeelDrik</span>
+    <span class="dimmer">Prototype — every verdict requires operator verification.</span>
+  </div>
+</footer>
+
+<script src="/static/js/api.js?v=202609201907"></script>
+<script src="/static/js/auth.js?v=202609201907"></script>
+<script>
+(function () {
+  var nav = document.getElementById('sitenav'),
+      links = document.getElementById('sitelinks'),
+      burger = document.getElementById('navburger');
+
+  burger.addEventListener('click', function () {
+    var on = links.classList.toggle('open');
+    burger.classList.toggle('x', on);
+    burger.setAttribute('aria-expanded', on ? 'true' : 'false');
+  });
+  links.addEventListener('click', function (e) {
+    if (e.target.tagName === 'A') {
+      links.classList.remove('open');
+      burger.classList.remove('x');
+      burger.setAttribute('aria-expanded', 'false');
+    }
+  });
+  addEventListener('scroll', function () {
+    nav.classList.toggle('stuck', scrollY > 12);
+  }, { passive: true });
+
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: .15 });
+    var els = document.querySelectorAll('.flow li, .cap, .ev, .strip-title, .strip-lede');
+    els.forEach(function (el) { el.classList.add('reveal'); io.observe(el); });
+    /* Fail-safe: nothing may stay invisible because an observer never fired
+       (print, screenshot, reduced motion, an old engine). */
+    setTimeout(function () {
+      els.forEach(function (el) { el.classList.add('in'); });
+    }, 2500);
+  }
+})();
+</script>
+<script>
+(function(){
+  var b=document.getElementById('themetoggle');
+  if(!b) return;
+  b.addEventListener('click',function(){
+    var next=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',next);
+    try{localStorage.setItem('nd-theme',next);}catch(e){}
+  });
+})();
+</script>
+</body>
+</html>

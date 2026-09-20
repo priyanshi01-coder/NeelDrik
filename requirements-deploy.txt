@@ -1,0 +1,11 @@
+# Runtime-only dependencies for the deployed demo.
+# Deliberately NO torch / rasterio: inference runs on the NumPy engine from the
+# same weights file, so the build stays small enough for a free instance.
+numpy>=1.24
+scipy>=1.10
+pillow>=9.5
+opencv-python-headless>=4.8
+starlette>=0.37
+uvicorn[standard]>=0.23
+python-multipart>=0.0.6
+PyJWT>=2.8

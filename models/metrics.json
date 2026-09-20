@@ -1,0 +1,57 @@
+{
+  "iou": {
+    "Sea": 0.9167552452909689,
+    "Oil": 0.5427936354233148,
+    "Look-alike": 0.5571862291482282,
+    "Ship": 0.11331351172778328,
+    "Land": 0.6102311088029083
+  },
+  "spill_accuracy": 0.935,
+  "precision": 0.9,
+  "recall": 0.9529411764705882,
+  "f1": 0.9257142857142857,
+  "evaluated_on": "synthetic",
+  "confusion": {
+    "NOT->NOT": 106,
+    "SPILL->SPILL": 81,
+    "NOT->SPILL": 9,
+    "SPILL->NOT": 4
+  },
+  "real_holdout": {
+    "iou": {
+      "Sea": 0.9401902357646644,
+      "Oil": 0.5806179833771409,
+      "Look-alike": 0.0,
+      "Ship": 0.0,
+      "Land": 0.0
+    },
+    "spill_accuracy": 0.919629057187017,
+    "precision": 0.8491735537190083,
+    "recall": 0.9298642533936652,
+    "f1": 0.8876889848812096,
+    "scenes": 112,
+    "patches": 1294,
+    "confusion": {
+      "NOT->SPILL": 73,
+      "NOT->NOT": 779,
+      "SPILL->SPILL": 411,
+      "SPILL->NOT": 31
+    },
+    "caveat": "held-out scenes from the same archive; thresholds calibrated on a set including these patches"
+  },
+  "params": 94429,
+  "trained_on": 4494,
+  "epochs": 40,
+  "runtime": "pytorch",
+  "torch_version": "2.14.0+cpu",
+  "decision": {
+    "oil_thr": 0.6,
+    "min_area_frac": 0.0056,
+    "spill_area_frac": 0.008,
+    "dominance": 1.0,
+    "review_area_ratio": 0.45,
+    "review_dominance": 1.15,
+    "wind_low": 3.0,
+    "wind_high": 12.0
+  }
+}

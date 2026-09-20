@@ -1,0 +1,10 @@
+{
+  "oil_thr": 0.6,
+  "min_area_frac": 0.0056,
+  "spill_area_frac": 0.008,
+  "dominance": 1.0,
+  "review_area_ratio": 0.45,
+  "review_dominance": 1.15,
+  "wind_low": 3.0,
+  "wind_high": 12.0
+}

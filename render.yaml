@@ -1,0 +1,17 @@
+# One-click deploy config for Render (render.com).
+# Free tier is enough: the model runs on NumPy, no GPU and no torch needed.
+services:
+  - type: web
+    name: neeldrik
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements-deploy.txt
+    startCommand: uvicorn backend.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      # Signs the session tokens. Render generates one and keeps it secret.
+      - key: NEELDRIK_SECRET
+        generateValue: true

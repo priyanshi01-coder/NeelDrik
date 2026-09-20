@@ -1,0 +1,33 @@
+{
+  "iou": {
+    "Sea": 0.9324378929894639,
+    "Oil": 0.44089896926149535,
+    "Look-alike": 0.6127534104426615,
+    "Ship": 0.061127997298210064,
+    "Land": 0.6074806272499848
+  },
+  "spill_accuracy": 0.97,
+  "precision": 0.9540229885057471,
+  "recall": 0.9764705882352941,
+  "f1": 0.9651162790697674,
+  "evaluated_on": "synthetic",
+  "confusion": {
+    "NOT->NOT": 111,
+    "SPILL->SPILL": 83,
+    "NOT->SPILL": 4,
+    "SPILL->NOT": 2
+  },
+  "params": 94429,
+  "trained_on": 648,
+  "epochs": 26,
+  "decision": {
+    "oil_thr": 0.4,
+    "min_area_frac": 0.0021,
+    "spill_area_frac": 0.003,
+    "dominance": 1.3,
+    "review_area_ratio": 0.45,
+    "review_dominance": 1.15,
+    "wind_low": 3.0,
+    "wind_high": 12.0
+  }
+}

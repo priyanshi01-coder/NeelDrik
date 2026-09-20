@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+# Runtime database — must NOT be committed (it holds accounts + detections)
+models/*.db
+models/*.db-wal
+models/*.db-shm
+models/.jwt_secret
+# Training data is huge; the deployed app does not need it
+data/real/
+data/train/
