@@ -1733,3 +1733,33 @@ label.btn{display:inline-flex;align-items:center;justify-content:center;cursor:p
   letter-spacing:.01em;padding:2px 2px 0
 }
 :root[data-theme="dark"] .ops-maptitle{color:#DCE8F5}
+
+/* Mobile drawer: an unconditional `.rail{top:0}` further up was overriding the
+   880px rule, so the drawer started BEHIND the 62px mobile bar and its first
+   item ("Dashboard") was hidden. This restores the offset at the end of the
+   cascade, where it actually wins. */
+@media(max-width:880px){
+  .rail{top:62px;height:calc(100dvh - 62px)}
+  .rail nav{padding-top:14px}
+}
+
+/* ---- How it works: numbered pipeline stages ---- */
+.howstage{display:flex;gap:16px;padding:16px 0;border-top:1px solid var(--line)}
+.howstage:first-of-type{border-top:none;padding-top:4px}
+.hownum{
+  flex:none;width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  font-family:var(--mono);font-size:13px;font-weight:700;
+  background:rgba(28,111,168,.14);color:var(--t-accent);border:1px solid var(--line)
+}
+.howbody{flex:1;min-width:0}
+.howbody h3{margin:2px 0 6px;font-size:14.5px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.howbody p{font-size:13.6px;line-height:1.72;margin:0 0 7px;color:var(--dim)}
+.howbody .howwhy{
+  font-size:12.9px;color:var(--dimmer);border-left:3px solid var(--line);
+  padding-left:11px;margin:9px 0 0
+}
+.howbody .howwhy b{color:var(--t-accent)}
+@media(max-width:620px){
+  .howstage{gap:11px}
+  .hownum{width:30px;height:30px;font-size:11.5px;border-radius:9px}
+}

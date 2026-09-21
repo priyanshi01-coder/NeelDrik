@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="/static/css/app.css?v=202609201907">
+<link rel="stylesheet" href="/static/css/app.css?v=202609210912">
 </head>
 <body>
 
@@ -75,6 +75,9 @@
       <a data-view="history">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg>
         Reports</a>
+      <a data-view="how">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4"/><path d="M12 17.5v.01"/></svg>
+        How it works</a>
       <a data-view="model">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg>
         Model card</a>
@@ -122,12 +125,14 @@
           <h4>System</h4>
           <a data-view="detect">Detect spill</a>
           <a data-view="drift">Drift &amp; origin</a>
+          <a data-view="how">How it works</a>
           <a data-view="model">Model card</a>
         </div>
         <div>
           <h4>Data sources</h4>
-          <a href="https://dataspace.copernicus.eu/" target="_blank" rel="noopener">Copernicus Sentinel-1</a>
-          <a href="https://zenodo.org/records/13761290" target="_blank" rel="noopener">Training dataset</a>
+          <a href="https://zenodo.org/records/13761290" target="_blank" rel="noopener">Zenodo — Trujillo-Acatitla (2024)</a>
+          <a href="https://dataspace.copernicus.eu/" target="_blank" rel="noopener">Sentinel-1 · Copernicus</a>
+          <span class="dimmer" style="display:block;margin:12px 0 6px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase">Benchmark reference</span>
           <a href="https://www.emsa.europa.eu/csn-menu.html" target="_blank" rel="noopener">EMSA CleanSeaNet</a>
         </div>
       </div>
@@ -141,9 +146,9 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/static/js/api.js?v=202609201907"></script>
-<script src="/static/js/ops.js?v=202609201907"></script>
-<script src="/static/js/app.js?v=202609201907"></script>
+<script src="/static/js/api.js?v=202609210912"></script>
+<script src="/static/js/ops.js?v=202609210912"></script>
+<script src="/static/js/app.js?v=202609210912"></script>
 <script>
 /* Off-canvas drawer + footer routing. Kept out of app.js so the view layer
    stays the single owner of rendering. */

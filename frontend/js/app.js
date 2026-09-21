@@ -35,6 +35,7 @@
     detect: { title: 'Detect spill', render: renderDetect },
     history: { title: 'History', render: renderHistory },
     drift: { title: 'Drift & origin', render: renderDrift },
+    how: { title: 'How it works', render: renderHow },
     model: { title: 'Model', render: renderModel },
     account: { title: 'Account & privacy', render: renderAccount }
   };
@@ -47,7 +48,7 @@
     $('#vmeta').textContent = '';
     view.innerHTML = '<div class="empty"><span class="spinner"></span></div>';
     location.hash = name;
-    Promise.resolve(VIEWS[name].render()).catch(e => {
+    return Promise.resolve(VIEWS[name].render()).catch(e => {
       if (e.status === 401) { API.clearSession(); location.replace('/login'); return; }
       view.innerHTML = `<div class="card"><h3>Error</h3><p>${esc(e.message)}</p></div>`;
     });
@@ -232,11 +233,13 @@
   }
 
   function showResult(r) {
+    const card = $('#rescard');
+    if (!card) return;          // view changed under us; nothing to paint into
     const cls = pillClass(r.verdict);
 
     // Out-of-domain input is refused rather than guessed at.
     if (r.analysed === false) {
-      $('#rescard').innerHTML = `
+      card.innerHTML = `
         <h3>Result</h3>
         <div class="verdict unsup" style="margin-bottom:16px">
           <div>
@@ -255,7 +258,7 @@
           samples, to get a verdict.</p>`;
       return;
     }
-    $('#rescard').innerHTML = `
+    card.innerHTML = `
       <h3>Result</h3>
       <div class="verdict ${cls}" style="margin-bottom:16px">
         <div>
@@ -379,8 +382,12 @@
 
   async function openDetection(id) {
     const r = await API.detection(id);
-    go('detect');
-    setTimeout(() => { state.last = r; showResult(r); }, 60);
+    /* Wait for the view to actually render. This used to be a 60 ms timer,
+       which is a race: on a slow connection #rescard did not exist yet and
+       showResult threw "Cannot set properties of null". */
+    await go('detect');
+    state.last = r;
+    showResult(r);
   }
 
   // ------------------------------------------------------------------ //
@@ -518,6 +525,132 @@
   }
 
   // ------------------------------------------------------------------ //
+  async function renderHow() {
+    let m = {};
+    try { m = await API.model(); } catch (e) { m = {}; }
+    const rh = m.real_holdout || null;
+    const pc = (v) => v != null ? (v * 100).toFixed(1) + '%' : '—';
+
+    view.innerHTML = `
+      <div class="card" style="margin-bottom:16px">
+        <h3>What NEELDRIK does</h3>
+        <p style="font-size:14.5px;line-height:1.75;margin:6px 0 0">
+          NEELDRIK reads Sentinel-1 radar images of the sea and decides whether an
+          oil spill is present, how large it is, and where the oil came from — and it
+          attaches the evidence for every one of those answers.
+        </p>
+        <p class="dim" style="font-size:13.5px;line-height:1.7;margin:12px 0 0">
+          Radar returns a bright signal from the small wind-driven waves on the sea
+          surface. A film of oil damps those waves, so oil appears as a dark patch.
+          The difficulty is that low wind, algal blooms, rain cells and ship wakes all
+          look dark too. Telling oil apart from those <b>look-alikes</b> is the problem
+          this system exists to solve.
+        </p>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <h3>The pipeline, stage by stage</h3>
+        <p class="dim" style="font-size:12.8px;margin:2px 0 14px">
+          Each stage is marked with whether it runs in this build or is specified for
+          the next one — so nothing here is a claim the prototype cannot back.
+        </p>
+      <div class="howstage">
+        <div class="hownum">01</div>
+        <div class="howbody">
+          <h3>Ingest <span class="pill clean">running now</span></h3>
+          <p>A Sentinel-1 SAR scene enters the system. The prototype takes it as an upload (GeoTIFF, PNG or JPEG). In deployment the same entry point is fed automatically from the Copernicus Open Access Hub as each pass over India's EEZ lands.</p>
+          <p class="howwhy"><b>Why:</b> Sentinel-1 carries a C-band radar that images through cloud and darkness, which is why it is the sensor of record for maritime surveillance.</p>
+        </div>
+      </div>
+      <div class="howstage">
+        <div class="hownum">02</div>
+        <div class="howbody">
+          <h3>Domain gate <span class="pill clean">running now</span></h3>
+          <p>Before anything is analysed, the system decides what kind of image it is actually holding — radar, or something else. Anything that is not SAR is refused outright and returned as NOT ANALYSED.</p>
+          <p class="howwhy"><b>Why:</b> In radar, oil is dark. In an ordinary photograph oil is bright silver. A detector trained on one and fed the other fails in both directions, so the system declines rather than guesses.</p>
+        </div>
+      </div>
+      <div class="howstage">
+        <div class="hownum">03</div>
+        <div class="howbody">
+          <h3>Preprocess <span class="pill clean">running now</span></h3>
+          <p>The scene is stretched to a common range, a texture map is measured, speckle is suppressed with a Lee filter, and the result is resized to the model input. Two channels go forward: despeckled brightness, and local texture.</p>
+          <p class="howwhy"><b>Why:</b> Texture is measured BEFORE filtering. The filter would erase it, and texture is the single cue that separates oil from a look-alike: oil damps waves, so it is dark AND smooth, while a low-wind patch is dark but still rough.</p>
+        </div>
+      </div>
+      <div class="howstage">
+        <div class="hownum">04</div>
+        <div class="howbody">
+          <h3>Segmentation <span class="pill clean">running now</span></h3>
+          <p>A 5-class U-Net labels every pixel as Sea, Oil, Look-alike, Ship or Land, with a probability for each. The network holds 94,429 parameters and runs on CPU in under a second.</p>
+          <p class="howwhy"><b>Why:</b> Classifying the whole image is not enough for an investigation. Responders need the slick's shape, extent and position, so the model works pixel by pixel.</p>
+        </div>
+      </div>
+      <div class="howstage">
+        <div class="hownum">05</div>
+        <div class="howbody">
+          <h3>Decision <span class="pill clean">running now</span></h3>
+          <p>Calibrated thresholds convert the probability map into a verdict: SPILL, LOOK-ALIKE, CLEAN, or NEEDS REVIEW. Small fragments are discarded as speckle, and a wind plausibility check is applied. Every verdict carries the reasons behind it.</p>
+          <p class="howwhy"><b>Why:</b> Wind can only ever weaken a call, never strengthen one. Below 3 m/s the sea is glassy and any dark patch is suspect; above 12 m/s a real slick breaks up. In both cases a SPILL is downgraded to NEEDS REVIEW.</p>
+        </div>
+      </div>
+      <div class="howstage">
+        <div class="hownum">06</div>
+        <div class="howbody">
+          <h3>Drift and origin <span class="pill clean">running now</span></h3>
+          <p>A Lagrangian particle model carries the slick backwards through the current and 3% of the wind, deflected by Coriolis and integrated with RK4. It returns where the oil most likely was 6, 12 and 24 hours earlier, each with an uncertainty radius.</p>
+          <p class="howwhy"><b>Why:</b> This is physics, not a network, so it can be proved rather than merely measured. It is checked against ten closed-form solutions and recovers a known release point to within 200 metres.</p>
+        </div>
+      </div>
+      <div class="howstage">
+        <div class="hownum">07</div>
+        <div class="howbody">
+          <h3>Attribution <span class="pill review">designed, not yet built</span></h3>
+          <p>The back-tracked origin window is matched against AIS vessel tracks for the same period. Vessels that were inside the window are ranked by proximity, timing, course and AIS gaps, producing an evidence-backed shortlist rather than a single accusation.</p>
+          <p class="howwhy"><b>Why:</b> This stage is designed and specified but is NOT implemented in the current build. Detection and drift are built and measured; attribution is the next module.</p>
+        </div>
+      </div>
+      <div class="howstage">
+        <div class="hownum">08</div>
+        <div class="howbody">
+          <h3>Evidence package <span class="pill clean">running now</span></h3>
+          <p>The complete record is stored and exportable: the slick boundary as GeoJSON, a colour overlay as PNG, the verdict, the confidence, the thresholds that decided it and the reason trail.</p>
+          <p class="howwhy"><b>Why:</b> An investigation needs evidence that survives scrutiny, not a score. Every number the system shows can be traced back to the rule that produced it.</p>
+        </div>
+      </div>
+      </div>
+
+      <div class="grid g2">
+        <div class="card">
+          <h3>Measured performance</h3>
+          ${rh ? `<div class="kv">
+            <span class="k">Unseen scenes</span><span class="v">${rh.scenes}</span>
+            <span class="k">Precision</span><span class="v">${pc(rh.precision)}</span>
+            <span class="k">Recall</span><span class="v">${pc(rh.recall)}</span>
+            <span class="k">Oil IoU</span><span class="v">${
+              typeof rh.iou.Oil === 'number' ? rh.iou.Oil.toFixed(3) : '—'}</span>
+          </div>
+          <p class="dimmer" style="font-size:12px;line-height:1.6;margin:10px 0 0">
+            Measured on real Sentinel-1 acquisitions the model never saw in training.
+          </p>`
+          : '<div class="empty">Train the model to populate these numbers.</div>'}
+        </div>
+        <div class="card">
+          <h3>What it will not do</h3>
+          <ul style="font-size:13.5px;line-height:1.75;margin:6px 0 0;padding-left:18px">
+            <li>It does not answer when the image is not SAR.</li>
+            <li>It does not force a verdict when oil and look-alike evidence are
+                too close — it returns NEEDS REVIEW for a human.</li>
+            <li>It does not treat wind as supporting evidence; wind can only
+                weaken a call.</li>
+            <li>It does not name a vessel. Attribution is a designed stage, not a
+                built one.</li>
+          </ul>
+        </div>
+      </div>`;
+  }
+
+  // ------------------------------------------------------------------ //
   async function renderModel() {
     const m = await API.model();
     const iou = m.iou || {};
@@ -578,18 +711,6 @@
           dataset and re-run train.py.</div>
       </div>`}
 
-      <div class="card" style="grid-column:1/-1">
-        <h3>Synthetic scenes <span class="pill review">not a real-SAR claim</span></h3>
-        <p class="dim" style="font-size:13px;margin-top:0">
-          Generated test scenes, kept because they are the only source of
-          supervision for Ship and Land. They score higher than real imagery
-          and should not be quoted on their own.
-          Spill accuracy ${pct(m.spill_accuracy)} · precision ${pct(m.precision)} ·
-          recall ${pct(m.recall)} · F1 ${pct(m.f1)}
-        </p>
-        ${Object.keys(iou).length ? `<div class="grid g2">${bars(iou)}</div>`
-          : '<div class="empty">Run train.py to populate metrics.</div>'}
-      </div>
       <div class="card" style="grid-column:1/-1">
         <h3>Decision thresholds (calibrated on held-out data)</h3>
         <div class="kv" style="max-width:520px">

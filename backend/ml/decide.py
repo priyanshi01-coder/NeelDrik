@@ -40,6 +40,13 @@ DEFAULTS = {
     "oil_thr": 0.50,         # P(Oil) above which a pixel is a candidate
     "min_area_frac": 0.004,  # drop components smaller than this share of the scene
     "spill_area_frac": 0.006,  # total oil share needed to call a spill
+    # A separate, much higher bar for calling a scene a LOOK-ALIKE.  It used to
+    # reuse spill_area_frac (0.8%), which is a threshold tuned for *detecting
+    # oil*, not for naming a feature.  At that level a scene with 1% scattered
+    # look-alike pixels -- speckle, not a feature -- was labelled LOOKALIKE
+    # instead of CLEAN.  A real look-alike (wind shadow, algal slick) covers a
+    # coherent 10-30% of the frame.
+    "lookalike_area_frac": 0.05,
     "dominance": 1.05,       # oil evidence must beat look-alike evidence by this
     # --- review band -------------------------------------------------- #
     "review_area_ratio": 0.45,   # >= this share of the area threshold -> review
@@ -145,7 +152,17 @@ def analyse(proba, cfg=None, px_area_km2=None, wind_ms=None):
     oil_frac = float(keep.sum() / total)
     oil_ev = float(p_oil[keep].mean()) if keep.any() else float(p_oil.max())
     look_ev = float(p_look[keep].mean()) if keep.any() else float(p_look.mean())
-    look_frac = float((p_look > 0.5).mean())
+    # Look-alike area gets the SAME component filter as oil: scattered single
+    # pixels above 0.5 are speckle, and counting them was what turned clean
+    # scenes into LOOKALIKE verdicts.
+    look_raw = ndimage.binary_opening(p_look > 0.5, np.ones((3, 3)))
+    look_lab, look_n = ndimage.label(look_raw)
+    look_keep = np.zeros_like(look_raw)
+    for i in range(1, look_n + 1):
+        comp = look_lab == i
+        if int(comp.sum()) >= min_area:
+            look_keep |= comp
+    look_frac = float(look_keep.sum() / total)
 
     # ---- how far past each threshold are we, as ratios ---------------- #
     area_ratio = oil_frac / max(cfg["spill_area_frac"], 1e-9)
@@ -156,7 +173,8 @@ def analyse(proba, cfg=None, px_area_km2=None, wind_ms=None):
     # ---- verdict ------------------------------------------------------ #
     reasons = []
     if not regions:
-        verdict = LOOKALIKE_V if look_frac >= cfg["spill_area_frac"] else CLEAN
+        verdict = (LOOKALIKE_V if look_frac >= cfg.get("lookalike_area_frac", 0.05)
+                   else CLEAN)
         reasons.append("no oil region survived the minimum-area filter")
     else:
         strong = area_ratio >= 1.0 and dom_ratio >= 1.0
@@ -179,9 +197,10 @@ def analyse(proba, cfg=None, px_area_km2=None, wind_ms=None):
                 f"oil covers {oil_frac*100:.2f}% of the scene, below the "
                 f"{cfg['spill_area_frac']*100:.2f}% needed to call a spill but "
                 "too much to dismiss")
-        elif look_frac >= cfg["spill_area_frac"]:
+        elif look_frac >= cfg.get("lookalike_area_frac", 0.05):
             verdict = LOOKALIKE_V
-            reasons.append("look-alike class dominates the dark area")
+            reasons.append(f"look-alike features cover {look_frac*100:.1f}% of "
+                           "the scene and no oil region survived the filters")
         else:
             verdict = CLEAN
             reasons.append("oil area below the detection threshold")
@@ -202,20 +221,28 @@ def analyse(proba, cfg=None, px_area_km2=None, wind_ms=None):
     flagged = verdict in (SPILL, REVIEW)      # anything a human should look at
 
     # ---- confidence: margin over the thresholds that decided it ------- #
+    # How certain is the network itself, averaged over the scene?  The old
+    # CLEAN branch was `1 - area_ratio*0.5`, which is exactly 1.0 whenever
+    # there is no oil at all -- so every clean scene reported 99.9%.  That is
+    # not a measurement, it is an artefact of subtracting zero.
+    mean_certainty = float(proba.max(axis=0).mean())
+
     if verdict == SPILL:
         conf = oil_ev * min(1.0, area_ratio / 3.0) ** 0.35 * min(1.0, dom_ratio / 1.5) ** 0.35
     elif verdict == REVIEW:
         conf = 0.5                      # by definition: the system is not sure
-    else:
-        conf = 1.0 - min(1.0, area_ratio) * 0.5
-        conf = max(conf, float(1.0 - p_oil.max()))
+    elif verdict == LOOKALIKE_V:
+        look_ratio = look_frac / max(cfg.get("lookalike_area_frac", 0.05), 1e-9)
+        conf = mean_certainty * min(1.0, look_ratio / 2.0) ** 0.35
+    else:                                # CLEAN
+        conf = mean_certainty * (1.0 - min(1.0, area_ratio) * 0.5)
 
     return {
         "verdict": verdict,
         "label": LABELS[verdict],
         "is_spill": is_spill,
         "flagged": flagged,
-        "confidence": round(float(np.clip(conf, 0.0, 0.999)), 4),
+        "confidence": round(float(np.clip(conf, 0.0, 0.99)), 4),
         "oil_area_frac": round(oil_frac, 5),
         "oil_evidence": round(oil_ev, 4),
         "lookalike_evidence": round(look_ev, 4),
