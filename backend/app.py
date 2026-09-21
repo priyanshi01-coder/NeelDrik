@@ -57,7 +57,7 @@ def _auth(request):
 #: Capabilities this build serves.  The frontend checks this list so that a
 #: server left running from before a feature existed reports itself plainly
 #: instead of failing with a bare 404 at the moment the user clicks.
-FEATURES = ["detect", "drift", "wind_gating", "avatar", "demo"]
+FEATURES = ["detect", "drift", "wind_gating", "avatar", "demo", "scene_location"]
 
 
 async def h_health(request):
@@ -123,7 +123,9 @@ async def h_detect(request):
         wind = form.get("wind_ms")
         wind = wind if wind not in (None, "") else None
         return JSONResponse(sv.analyse_upload(user, name, data, scene_km,
-                                              bounds, wind_ms=wind))
+                                              bounds, wind_ms=wind,
+                                              lat=form.get("lat"),
+                                              lon=form.get("lon")))
     except ApiError as e:
         return _err(e)
     except Exception as e:                                   # pragma: no cover

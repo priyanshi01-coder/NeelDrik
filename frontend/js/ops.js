@@ -47,8 +47,6 @@
   };
   const K = (ico, label) => '<span class="kk">' + IC[ico] + esc(label) + '</span>';
 
-  const HORIZONS = [0, 24, 48, 72];
-
   function fmtTime(t) {
     return t ? new Date(t * 1000).toLocaleString() : '—';
   }
@@ -135,7 +133,9 @@
               <div class="kv">
                 <span class="k">${K('grid','Scene')}</span><span class="v">${esc(p.filename || '—')}</span>
                 <span class="k">${K('pin','Location')}</span><span class="v">${
-                  p.georeferenced ? 'from raster CRS' : 'not georeferenced'}</span>
+                  p.scene_center
+                    ? p.scene_center.lat.toFixed(4) + ', ' + p.scene_center.lon.toFixed(4)
+                    : 'not supplied'}</span>
                 <span class="k">${K('area','Area')}</span><span class="v">${area}</span>
                 <span class="k">${K('drop','Est. volume')}<i class="qmark" title="Derived, not measured: area x 1 um mean film thickness x 0.85 t/m3. Film thickness is not observable from SAR, so treat this as an order-of-magnitude figure.">?</i></span><span class="v">${volume}</span>
                 <span class="k">${K('gauge','Oil coverage')}</span><span class="v">${p.oil_area_frac != null ? (p.oil_area_frac * 100).toFixed(2) + '%' : '—'}</span>
@@ -157,34 +157,20 @@
           </div>
 
           <div class="card">
-            <div class="cardtop"><h3 class="ttl"><i class="ic">${IC.wave}</i>Spill Drift Forecast
-              <span class="sub72">(Next 72 Hours)</span></h3></div>
-            <div class="driftmini">
-              <svg viewBox="0 0 320 96" preserveAspectRatio="none" aria-hidden="true">
-                <defs><linearGradient id="dg" x1="0" x2="1">
-                  <stop offset="0" stop-color="#E11D48"/><stop offset=".35" stop-color="#F59E0B"/>
-                  <stop offset=".7" stop-color="#10B981"/><stop offset="1" stop-color="#3B82F6"/>
-                </linearGradient></defs>
-                <rect width="320" height="96" fill="var(--driftsea)"/>
-                <path d="M14 78 C 90 62, 150 44, 306 16" stroke="url(#dg)" stroke-width="3"
-                      fill="none" stroke-dasharray="6 5" stroke-linecap="round"/>
-                ${[[14,78,'#E11D48'],[112,58,'#F59E0B'],[210,38,'#10B981'],[306,16,'#3B82F6']]
-                  .map(c => `<circle cx="${c[0]}" cy="${c[1]}" r="5" fill="${c[2]}"
-                             stroke="#fff" stroke-width="1.6"/>`).join('')}
-              </svg>
-            </div>
-            <div class="horizons" id="ops-horizons">
-              ${HORIZONS.map((h, i) => `<button class="chip ${i === 0 ? 'on' : ''}"
-                 data-h="${h}">${h === 0 ? 'Now' : '+' + h + 'h'}</button>`).join('')}
+            <div class="cardtop"><h3 class="ttl"><i class="ic">${IC.wave}</i>Back-tracked origin</h3></div>
+            <div id="ops-origin" class="dim" style="font-size:13px;line-height:1.7">
+              ${hasSpill && p.scene_center
+                ? 'Running the back-track…'
+                : 'The back-track needs a slick position. ' +
+                  (hasSpill ? 'This scene was analysed without one.'
+                            : 'Analyse a scene to begin.')}
             </div>
             <p class="dim" style="font-size:12.5px;line-height:1.6;margin:12px 0 0">
               Lagrangian transport — current plus 3% of wind, Coriolis-deflected,
               RK4 integrated. Open <a data-goto="drift">Drift &amp; origin</a> to
-              run a full forecast or back-track the source.
+              set the met-ocean conditions and run a full back-track.
             </p>
           </div>
-
-
 
         </aside>
 
@@ -196,13 +182,6 @@
       a.style.cursor = 'pointer';
       a.onclick = () => go(a.dataset.goto);
     });
-    view.querySelectorAll('.horizons .chip').forEach(b => {
-      b.onclick = () => {
-        b.parentElement.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
-        b.classList.add('on');
-      };
-    });
-
     drawMap(p);
   };
 
@@ -220,37 +199,58 @@
         : '<div class="map-fallback">Offline — tile map needs a network.</div>';
       return;
     }
-    // Off the Gujarat coast — the scene carries no CRS, so this is a display
-    // anchor for the demo, not a georeferenced position.
-    const centre = [20.35, 70.15];
-    const map = L.map(el, { zoomControl: true }).setView(centre, 8);
+    /* WHERE THIS MAP IS CENTRED
+       It used to be hard-coded to 20.35 N, 70.15 E off Gujarat, so every scene
+       -- and even an empty account -- drew a red circle in the same place. The
+       centre now comes from the scene itself: the GeoTIFF's CRS, or the centre
+       coordinates the analyst entered on upload. When a scene has neither, no
+       world map is drawn at all, because a pin somewhere plausible is a lie. */
+    const sc = p && p.scene_center;
+    const geo = p && p.geojson && p.geojson.features && p.geojson.features.length
+      && p.geojson.crs == null                 // local 0..1 grid is not degrees
+      ? p.geojson : null;
+
+    if (!sc) {
+      const img = p && (p.overlay_png || p.overlay_thumb);
+      el.classList.add('nomap');
+      el.innerHTML = img
+        ? '<img src="' + img + '" alt="Detection overlay">' +
+          '<span class="nomap-note">This scene carries no position, so it is not ' +
+          'placed on a map. Re-analyse it with the scene centre latitude and ' +
+          'longitude to map the slick.</span>'
+        : '<div class="map-fallback">No located scene yet. Analyse a scene with ' +
+          'its centre coordinates and the slick and its back-tracked origin ' +
+          'appear here.</div>';
+      return;
+    }
+
+    const centre = [sc.lat, sc.lon];
+    const map = L.map(el, { zoomControl: true }).setView(centre, 9);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18, attribution: '&copy; OpenStreetMap'
     }).addTo(map);
 
-    const geo = p && p.geojson && p.geojson.features && p.geojson.features.length
-      ? p.geojson : null;
-
     if (geo) {
-      // real slick boundary, placed at the display anchor
       const layer = L.geoJSON(geo, {
         style: { color: '#E11D48', weight: 2, fillColor: '#E11D48', fillOpacity: .42 }
       }).addTo(map);
       try { map.fitBounds(layer.getBounds().pad(0.6)); } catch (e) { /* unbounded */ }
-    } else {
-      L.circle(centre, { radius: 9000, color: '#E11D48', weight: 2,
-        fillColor: '#E11D48', fillOpacity: .3 }).addTo(map);
+    } else if (p.scene_bounds) {
+      // no slick polygon (clean / look-alike scene) -- show the footprint only
+      const bb = p.scene_bounds;
+      L.rectangle([[bb[1], bb[0]], [bb[3], bb[2]]], {
+        color: '#64748B', weight: 1, dashArray: '5 5', fillOpacity: .05
+      }).addTo(map).bindPopup('Scene footprint');
     }
 
-    const c = geo ? map.getCenter() : L.latLng(centre[0], centre[1]);
+    const c = L.latLng(centre[0], centre[1]);
 
-    /* The dashboard map used to draw a hard-coded diagonal line labelled
-       "predicted drift". It was decorative -- it moved the same way whatever
-       the scene was. It now runs the SAME back-track the Drift & Origin page
-       runs, through the same /api/drift endpoint, and plots what comes back.
-       If the call fails, nothing fake is drawn in its place. */
-    API.drift({ lat: c.lat, lon: c.lng, hours: [6, 12, 24],
-                wind_speed: 6, wind_dir: 225, cur_speed: 0.3, cur_dir: 250 })
+    /* The back-track runs through the SAME /api/drift endpoint the Drift &
+       Origin page uses, from the real slick position. Wind and current are
+       not in a SAR image, so the values below are a stated reference case --
+       the panel says so. If the call fails, nothing fake is drawn. */
+    const REF = { wind_speed: 6, wind_dir: 225, cur_speed: 0.3, cur_dir: 250 };
+    API.drift(Object.assign({ lat: c.lat, lon: c.lng, hours: [6, 12, 24] }, REF))
       .then(res => {
         const gj = res && res.geojson;
         if (!gj || !gj.features) return;
@@ -282,8 +282,23 @@
         const note = document.querySelector('.ops-map .maplegend');
         if (note) note.insertAdjacentHTML('beforeend',
           '<span><i class="sq" style="background:#F59E0B"></i>Back-tracked origin</span>');
+
+        const box = document.getElementById('ops-origin');
+        const best = (res.candidates || [])[res.candidates.length - 1];
+        if (box && best) box.innerHTML =
+          '<b>' + best.hours_before.toFixed(0) + ' h before:</b> ' +
+          best.lat.toFixed(4) + ', ' + best.lon.toFixed(4) + '<br>' +
+          best.distance_from_slick_km.toFixed(1) + ' km from the slick, search ' +
+          'radius ' + (best.uncertainty_m / 1000).toFixed(2) + ' km.' +
+          '<br><span class="dimmer" style="font-size:12px">Reference conditions: ' +
+          REF.wind_speed + ' m/s wind from ' + REF.wind_dir + '\u00B0, ' +
+          REF.cur_speed + ' m/s current towards ' + REF.cur_dir + '\u00B0. ' +
+          'Enter the real met-ocean values on Drift &amp; origin.</span>';
       })
-      .catch(() => { /* no drift layer rather than a decorative one */ });
+      .catch(() => {
+        const box = document.getElementById('ops-origin');
+        if (box) box.textContent = 'Back-track unavailable for this scene.';
+      });
 
     setTimeout(() => map.invalidateSize(), 120);
   }

@@ -7,6 +7,7 @@ and were produced by train.py.
 """
 from __future__ import annotations
 
+import math
 import os
 import threading
 import time
@@ -106,9 +107,86 @@ def model_info():
     })
 
 
+# --------------------------------------------------------------------------- #
+# Where on Earth is this scene?
+# --------------------------------------------------------------------------- #
+# A SAR chip carries no position unless something tells us one. Until this was
+# fixed the pipeline shipped the slick outline in NORMALISED image coordinates
+# (0..1) and the map drew them as if they were degrees -- which is longitude
+# 0, latitude 0: the Gulf of Guinea, off West Africa. Every scene landed on
+# the same spot there because every scene has the same 0..1 coordinate box.
+#
+# There are only three honest sources for a position, in this order of trust:
+#   raster    - the GeoTIFF's own CRS and affine transform
+#   operator  - the analyst typed the scene centre on the upload form
+#   (none)    - then the scene is NOT placed on a world map at all
+# The third case is why `scene_center` may be None: a missing position is
+# reported as missing rather than invented.
+EARTH_KM_PER_DEG = 111.32
+
+
+def _bounds_from_centre(lat, lon, width_km, aspect=1.0):
+    """(west, south, east, north) box of `width_km` centred on lat/lon."""
+    lat = max(min(float(lat), 89.0), -89.0)
+    shrink = max(math.cos(math.radians(lat)), 0.05)   # metres per degree of
+    half_w = (float(width_km) / 2.0) / (EARTH_KM_PER_DEG * shrink)  # longitude
+    half_h = (float(width_km) * float(aspect) / 2.0) / EARTH_KM_PER_DEG
+    return (lon - half_w, lat - half_h, lon + half_w, lat + half_h)
+
+
+def _bounds_from_raster(geo, source_shape):
+    """(west, south, east, north) from a GeoTIFF's transform, or None."""
+    t = geo.get("transform")
+    if not geo.get("georeferenced") or not t or len(t) < 6:
+        return None
+    h, w = source_shape
+    a, _b, c, _d, e, f = t[:6]
+    xs = (c, c + a * w)
+    ys = (f, f + e * h)
+    west, east = min(xs), max(xs)
+    south, north = min(ys), max(ys)
+    crs = str(geo.get("crs") or "").upper()
+    if "4326" in crs or "CRS84" in crs:
+        out = (west, south, east, north)
+    else:
+        try:                            # projected CRS -> degrees
+            from rasterio.warp import transform_bounds
+            out = tuple(float(v) for v in transform_bounds(
+                geo["crs"], "EPSG:4326", west, south, east, north))
+        except Exception:
+            return None
+    if not all(math.isfinite(v) for v in out):
+        return None
+    if not (-180.5 <= out[0] <= 180.5 and -90.5 <= out[1] <= 90.5):
+        return None
+    return out
+
+
+def _locate(pre, bounds, lat, lon, assumed_scene_km):
+    """Resolve the scene's footprint. Returns (bounds, scene_center|None)."""
+    src = None
+    if bounds and len(bounds) == 4:
+        src = "client"
+    else:
+        bounds = _bounds_from_raster(pre["geo"], pre["source_shape"])
+        src = "raster" if bounds else None
+    if bounds is None and lat is not None and lon is not None:
+        h, w = pre["source_shape"]
+        bounds = _bounds_from_centre(lat, lon, assumed_scene_km or 40.0,
+                                     h / float(max(w, 1)))
+        src = "operator"
+    if bounds is None:
+        return None, None
+    centre = {"lat": round((bounds[1] + bounds[3]) / 2.0, 6),
+              "lon": round((bounds[0] + bounds[2]) / 2.0, 6),
+              "source": src}
+    return tuple(round(float(v), 6) for v in bounds), centre
+
+
 def detect(data: bytes, assumed_scene_km: float | None = None,
            bounds=None, filename: str = "", force: bool = False,
-           wind_ms: float | None = None) -> dict:
+           wind_ms: float | None = None,
+           lat: float | None = None, lon: float | None = None) -> dict:
     """Run the full pipeline on raw image bytes.
 
     Out-of-domain input is REFUSED rather than guessed at (see domain.py).
@@ -145,6 +223,8 @@ def detect(data: bytes, assumed_scene_km: float | None = None,
             "lookalike_evidence": 0.0,
             "regions": [],
             "geojson": {"type": "FeatureCollection", "features": []},
+            "scene_center": None,
+            "scene_bounds": None,
             "scene_png": to_png_b64(rgb),
             "overlay_png": to_png_b64(rgb),
             "runtime": s["backend"],
@@ -172,8 +252,9 @@ def detect(data: bytes, assumed_scene_km: float | None = None,
     look_mask = proba[LOOKALIKE] > 0.5
 
     polys = mask_to_polygons(oil_mask)
+    scene_bounds, scene_center = _locate(pre, bounds, lat, lon, assumed_scene_km)
     geojson = polygons_to_geojson(
-        polys, bounds,
+        polys, scene_bounds,
         {"class": "oil", "verdict": res["verdict"],
          "confidence": res["confidence"]})
 
@@ -213,17 +294,21 @@ def detect(data: bytes, assumed_scene_km: float | None = None,
         "class_share": class_share,
         "regions": res["regions"],
         "geojson": geojson,
+        # None when nothing told us where the scene is. The UI must then refuse
+        # to place it on a world map rather than default to somewhere.
+        "scene_center": scene_center,
+        "scene_bounds": list(scene_bounds) if scene_bounds else None,
         "overlay_png": to_png_b64(overlay),
         "scene_png": to_png_b64(pre["display"]),
         "scene_thumb": to_thumb_b64(pre["display"]),
         "overlay_thumb": to_thumb_b64(overlay),
         "runtime": s["backend"],
         "elapsed_ms": int((time.time() - t0) * 1000),
-        "evidence": _evidence(res, pre, georef),
+        "evidence": _evidence(res, pre, georef, scene_center),
     }
 
 
-def _evidence(res, pre, georef):
+def _evidence(res, pre, georef, centre=None):
     """The explainability trail the flow document calls the Evidence Engine."""
     return [
         {"step": "Candidate identified",
@@ -248,4 +333,11 @@ def _evidence(res, pre, georef):
          "ok": georef,
          "detail": "from raster CRS" if georef
                    else "not georeferenced - area is a prototype estimate"},
+        {"step": "Scene located",
+         "ok": bool(centre),
+         "detail": (f"centre {centre['lat']:.4f}, {centre['lon']:.4f} "
+                    f"({'raster CRS' if centre['source'] == 'raster' else 'entered by operator'})")
+                   if centre else
+                   "no position - the scene carries no CRS and none was entered, "
+                   "so the slick is not placed on a map"},
     ]

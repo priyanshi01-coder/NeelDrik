@@ -102,10 +102,30 @@ def profile(user):
 
 
 # --------------------------------------------------------------------------- #
+def _opt_float(value, label, lo, hi):
+    """None-or-number, range checked. Blank strings mean 'not supplied'."""
+    if value in (None, "", "null"):
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        raise ApiError(400, f"{label} must be a number.")
+    if not lo <= v <= hi:
+        raise ApiError(400, f"{label} must be between {lo} and {hi}.")
+    return v
+
+
 def analyse_upload(user, filename, data, scene_km=None, bounds=None,
-                   wind_ms=None):
+                   wind_ms=None, lat=None, lon=None):
     if not data:
         raise ApiError(400, "No file received.")
+    # Scene centre. Optional, but if half of it arrives the position is
+    # unusable, so say that rather than silently dropping it.
+    lat = _opt_float(lat, "Scene latitude", -90.0, 90.0)
+    lon = _opt_float(lon, "Scene longitude", -180.0, 180.0)
+    if (lat is None) != (lon is None):
+        raise ApiError(400, "Give both the scene latitude and longitude, "
+                            "or leave both blank.")
     if wind_ms is not None:
         try:
             wind_ms = float(wind_ms)
@@ -121,7 +141,8 @@ def analyse_upload(user, filename, data, scene_km=None, bounds=None,
                             f"Use {', '.join(sorted(ALLOWED_EXT))}.")
     try:
         result = run_detect(data, assumed_scene_km=scene_km, bounds=bounds,
-                            filename=filename or "upload", wind_ms=wind_ms)
+                            filename=filename or "upload", wind_ms=wind_ms,
+                            lat=lat, lon=lon)
     except ValueError as exc:
         raise ApiError(400, f"Could not read that image: {exc}") from exc
     result["id"] = db.add_detection(user["id"], result)

@@ -64,12 +64,21 @@ const API = (() => {
     samples: () => req('/api/samples'),
     drift: (b) => req('/api/drift', { method: 'POST', body: b }),
     driftVerify: () => req('/api/drift/verify'),
-    detect: (file, sceneKm, windMs) => {
+    /* opts: { sceneKm, windMs, lat, lon } - every field optional. The scene
+       centre is what places the slick on a map; without it the result is
+       returned with scene_center:null and is deliberately NOT mapped. */
+    detect: (file, opts) => {
+      const o = opts || {};
       const fd = new FormData();
       fd.append('file', file, file.name || 'upload.png');
-      if (sceneKm) fd.append('scene_km', String(sceneKm));
-      if (windMs !== null && windMs !== undefined && windMs !== '')
-        fd.append('wind_ms', String(windMs));
+      const put = (k, v) => {
+        if (v !== null && v !== undefined && v !== '' && !Number.isNaN(v))
+          fd.append(k, String(v));
+      };
+      put('scene_km', o.sceneKm);
+      put('wind_ms', o.windMs);
+      put('lat', o.lat);
+      put('lon', o.lon);
       return req('/api/detect', { method: 'POST', form: fd });
     }
   };
