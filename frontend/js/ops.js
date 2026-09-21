@@ -186,49 +186,66 @@
   };
 
   /* ---------------------------------------------------------------- */
+  /* One place where the map says why it cannot show something.
+     The note goes in a strip of its own and the legend and the spill callout
+     are hidden with it -- they describe symbols that are not on screen, and
+     they used to sit on top of the note. */
+  function mapNotice(el, html, overlay) {
+    const wrap = el.closest('.mapwrap');
+    if (overlay) {
+      el.classList.add('nomap');
+      el.innerHTML = '<img src="' + overlay + '" alt="Detection overlay">';
+    }
+    if (!wrap) return;
+    wrap.classList.add('unlocated');
+    wrap.querySelectorAll('.mapnotice').forEach(n => n.remove());
+    wrap.insertAdjacentHTML('beforeend', '<div class="mapnotice">' + html + '</div>');
+  }
+
   function drawMap(p) {
     const el = document.getElementById('opsmap');
     if (!el) return;
+    const hasSpill = !!(p && p.verdict);
     if (typeof L === 'undefined') {
       const img = p && (p.overlay_png || p.overlay_thumb);
-      el.classList.add('nomap');
-      el.innerHTML = img
-        ? '<img src="' + img + '" alt="Detection overlay">' +
-          '<span class="nomap-note">Offline — tile map needs a network. ' +
-          'Showing the detection overlay instead.</span>'
-        : '<div class="map-fallback">Offline — tile map needs a network.</div>';
+      mapNotice(el, 'Offline \u2014 the tile map needs a network connection.' +
+                    (img ? ' Showing the detection overlay instead.' : ''), img);
       return;
     }
     /* WHERE THIS MAP IS CENTRED
        It used to be hard-coded to 20.35 N, 70.15 E off Gujarat, so every scene
        -- and even an empty account -- drew a red circle in the same place. The
        centre now comes from the scene itself: the GeoTIFF's CRS, or the centre
-       coordinates the analyst entered on upload. When a scene has neither, no
-       world map is drawn at all, because a pin somewhere plausible is a lie. */
+       coordinates the analyst entered on upload.
+
+       When a scene has NO position the map is still drawn -- an operations
+       console without a map is useless -- but it opens on India's EEZ at a
+       wide zoom with NOTHING plotted on it, and a banner says why. The rule is
+       "never draw a slick where we do not know one is": showing the sea is
+       fine, inventing a marker on it is not. */
     const sc = p && p.scene_center;
     const geo = p && p.geojson && p.geojson.features && p.geojson.features.length
       && p.geojson.crs == null                 // local 0..1 grid is not degrees
       ? p.geojson : null;
 
-    if (!sc) {
-      const img = p && (p.overlay_png || p.overlay_thumb);
-      el.classList.add('nomap');
-      el.innerHTML = img
-        ? '<img src="' + img + '" alt="Detection overlay">' +
-          '<span class="nomap-note">This scene carries no position, so it is not ' +
-          'placed on a map. Re-analyse it with the scene centre latitude and ' +
-          'longitude to map the slick.</span>'
-        : '<div class="map-fallback">No located scene yet. Analyse a scene with ' +
-          'its centre coordinates and the slick and its back-tracked origin ' +
-          'appear here.</div>';
-      return;
-    }
-
-    const centre = [sc.lat, sc.lon];
-    const map = L.map(el, { zoomControl: true }).setView(centre, 9);
+    const centre = sc ? [sc.lat, sc.lon] : [15.5, 73.0];   // India's EEZ
+    const map = L.map(el, { zoomControl: true }).setView(centre, sc ? 9 : 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18, attribution: '&copy; OpenStreetMap'
     }).addTo(map);
+    setTimeout(() => map.invalidateSize(), 120);
+
+    if (!sc) {
+      /* Nothing is plotted, so the legend would describe symbols that are not
+         on the map. Hide it and put the reason in its place -- that is what was
+         overlapping the legend before. */
+      mapNotice(el, hasSpill
+        ? 'This scene has no position, so nothing is plotted here. Pick a located '
+          + 'sample, or re-analyse with the scene centre latitude and longitude.'
+        : 'No located scene yet. Analyse a scene that carries its coordinates and '
+          + 'the slick and its back-tracked origin appear here.');
+      return;                                  // a map, but nothing invented on it
+    }
 
     if (geo) {
       const layer = L.geoJSON(geo, {

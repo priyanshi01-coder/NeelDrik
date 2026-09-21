@@ -1811,3 +1811,49 @@ label.btn{display:inline-flex;align-items:center;justify-content:center;cursor:p
 
 /* Sample tiles carry no class label any more, so give the image the room. */
 .samples img{height:72px}
+
+/* ==========================================================================
+   Dashboard map: the unlocated state
+   --------------------------------------------------------------------------
+   The map is always drawn -- an operations console without one is useless --
+   but when the scene carries no position NOTHING is plotted on it. The legend
+   would then label symbols that are not there, so it is hidden and the reason
+   takes its place. That overlap is what the legend and the note used to make.
+   ========================================================================== */
+.mapwrap.unlocated .maplegend,
+.mapwrap.unlocated .callout,
+#opsmap.nomap .nomap-note{display:none}
+#opsmap.nomap{display:grid;place-items:center;background:var(--surface-2);padding:10px 10px 62px}
+.mapwrap .mapnotice{
+  position:absolute;left:14px;right:14px;bottom:14px;z-index:500;
+  padding:11px 14px;border-radius:11px;font-size:12.6px;line-height:1.55;
+  color:var(--ink);background:var(--glass);border:1px solid var(--line);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:var(--shadow)
+}
+:root[data-theme="light"] .mapwrap .mapnotice{background:rgba(255,255,255,.95)}
+@media(max-width:760px){
+  .mapwrap .mapnotice{position:static;margin:10px;left:auto;right:auto;bottom:auto}
+}
+
+/* ==========================================================================
+   Key/value rows must not wrap their label
+   --------------------------------------------------------------------------
+   "Est. volume" and "Oil coverage" were breaking over two lines while their
+   value stayed on one, so the two columns no longer lined up. The label column
+   is now sized to its content and told not to wrap.
+   ========================================================================== */
+.kv{grid-template-columns:auto 1fr}
+.kv .k{white-space:nowrap}
+.kv .k .kk{white-space:nowrap}
+.kv .v{min-width:0;overflow-wrap:anywhere}
+
+/* A sample that carries its own real coordinates gets a pin, so it is obvious
+   which ones will land on the map by themselves. */
+.samples button{position:relative}
+.samples button .pin{
+  position:absolute;top:5px;right:5px;width:14px;height:14px;border-radius:50%;
+  background:var(--c-accent);border:2px solid var(--surface-1);
+  box-shadow:0 1px 4px rgba(0,0,0,.35)
+}
+.samples button.located{border-color:rgba(34,211,238,.45)}

@@ -185,6 +185,7 @@
           <div class="card">
             <h3>Or try a sample scene</h3>
             <div class="samples" id="samples"><span class="dim">loading…</span></div>
+            <div class="msg ok hidden" id="samplenote"></div>
           </div>
         </div>
         <div class="card" id="rescard">
@@ -264,11 +265,20 @@
     $('#samples').innerHTML = sm.items.length ? sm.items.map((s, i) => `
       <!-- The class label under each thumbnail (oil / look-alike / clean) is
            deliberately not shown: it is the answer. A judge should see the
-           scene, run it, and read the verdict the model produced. The label is
-           kept in the tooltip so the set is still checkable. -->
+           scene, run it, and read the verdict the model produced.
+           A located sample carries its real coordinates, and picking it fills
+           them into the form, so the map shows the real place. -->
       <button data-url="${esc(s.url)}" data-name="${esc(s.file)}"
-              title="Sample scene ${i + 1}">
+              data-lat="${s.lat != null ? s.lat : ''}"
+              data-lon="${s.lon != null ? s.lon : ''}"
+              data-km="${s.scene_km != null ? s.scene_km : ''}"
+              data-wind="${s.wind_ms != null ? s.wind_ms : ''}"
+              data-src="${esc(s.geo_source || s.source || '')}"
+              data-place="${esc(s.name || '')}"
+              class="${s.located ? 'located' : ''}"
+              title="${esc(s.name)}${s.located ? ' \u2014 carries its own coordinates' : ''}">
         <img src="${esc(s.url)}" alt="SAR sample scene">
+        ${s.located ? '<i class="pin" aria-hidden="true"></i>' : ''}
       </button>`).join('')
       : '<span class="dim">No samples installed.</span>';
     $$('#samples button').forEach(b => b.onclick = async () => {
@@ -279,6 +289,22 @@
       D.label = b.dataset.name + ' · sample';
       showChosen(D.label);
       b.classList.add('on');
+      /* A located sample brings its real coordinates with it. Filling them in
+         is what makes the map and the back-track show the true place, instead
+         of whatever happened to be typed last. */
+      const put = (id, v) => {
+        if (v !== '' && v != null) { $('#' + id).value = v; D[id] = v; }
+      };
+      put('lat', b.dataset.lat); put('lon', b.dataset.lon);
+      put('km', b.dataset.km);   put('wind', b.dataset.wind);
+      const note = $('#samplenote');
+      if (note) {
+        note.classList.toggle('hidden', !b.dataset.lat);
+        if (b.dataset.lat)
+          note.innerHTML = '<b>' + esc(b.dataset.place || 'Located scene') + '</b> \u2014 '
+            + esc(b.dataset.lat) + ', ' + esc(b.dataset.lon)
+            + (b.dataset.src ? '<br><span class="dimmer">' + esc(b.dataset.src) + '</span>' : '');
+      }
     });
     if (D.file) showChosen(D.label);
   }

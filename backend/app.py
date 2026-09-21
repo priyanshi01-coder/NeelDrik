@@ -191,15 +191,46 @@ async def h_dashboard(request):
 
 
 async def h_samples(request):
+    """The built-in sample scenes.
+
+    A sample may carry its real position. `data/samples/samples.json` holds one
+    entry per file with the coordinates the scene was actually acquired at, plus
+    where those coordinates came from. The console fills the upload form from
+    it, so a judge clicking a sample sees the slick on its real place on the
+    map and the drift model starts from the real point -- not from a guess.
+
+    Without that file the endpoint still works: samples are listed from their
+    filenames and simply carry no position.
+    """
     if not os.path.isdir(SAMPLES):
         return JSONResponse({"items": []})
+    meta = {}
+    mpath = os.path.join(SAMPLES, "samples.json")
+    if os.path.exists(mpath):
+        try:
+            raw = json.load(open(mpath, encoding="utf-8"))
+            for e in (raw.get("samples") if isinstance(raw, dict) else raw) or []:
+                if e.get("file"):
+                    meta[e["file"]] = e
+        except Exception:
+            meta = {}
     items = []
     for fn in sorted(os.listdir(SAMPLES)):
-        if fn.lower().endswith(".png"):
-            stem = os.path.splitext(fn)[0]
-            kind = stem.split("_")[0]
-            items.append({"file": fn, "name": stem.replace("_", " "), "kind": kind,
-                          "url": f"/samples/{fn}"})
+        if not fn.lower().endswith((".png", ".jpg", ".jpeg")):
+            continue
+        stem = os.path.splitext(fn)[0]
+        e = meta.get(fn, {})
+        item = {"file": fn, "name": e.get("name") or stem.replace("_", " "),
+                "kind": e.get("kind") or stem.split("_")[0],
+                "url": f"/samples/{fn}"}
+        for k in ("lat", "lon", "scene_km", "wind_ms"):
+            if e.get(k) is not None:
+                item[k] = e[k]
+        for k in ("source", "date", "note", "geo_source"):
+            if e.get(k):
+                item[k] = e[k]
+        item["located"] = item.get("lat") is not None and item.get("lon") is not None
+        items.append(item)
     return JSONResponse({"items": items})
 
 

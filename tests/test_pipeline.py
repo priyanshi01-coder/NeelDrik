@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import sys
 
@@ -49,12 +50,25 @@ check("tampered JWT rejected", read_token(t[:-4] + "aaaa") is None)
 
 print("\n3. Detection on labelled samples")
 samples = os.path.join(ROOT, "data", "samples")
+# The class lives in the manifest, not in the filename: a sample must not show
+# its own answer to anyone reading the file list.
+_man = os.path.join(samples, "samples.json")
+_truth, _geo = {}, {}
+if os.path.exists(_man):
+    for _e in json.load(open(_man, encoding="utf-8")).get("samples", []):
+        if _e.get("truth"):
+            _truth[_e["file"]] = _e["truth"]
+        if _e.get("lat") is not None:
+            _geo[_e["file"]] = _e
 rows, correct = [], 0
 for fn in sorted(os.listdir(samples)):
     if not fn.endswith(".png"):
         continue
-    kind = fn.split("_")[0]
-    res = detect(open(os.path.join(samples, fn), "rb").read(), filename=fn)
+    kind = _truth.get(fn, fn.split("_")[0])
+    _g = _geo.get(fn, {})
+    res = detect(open(os.path.join(samples, fn), "rb").read(), filename=fn,
+                 assumed_scene_km=_g.get("scene_km"),
+                 lat=_g.get("lat"), lon=_g.get("lon"))
     want_spill = kind == "spill"
     # a spill may be SPILL or deferred to REVIEW; both reach a human, and
     # REVIEW is a deferral rather than a wrong answer
@@ -163,7 +177,8 @@ check("RGB palette masks decode to class indices", _how == "rgb palette",
 check("palette decode puts oil where oil is", abs(float((_mm == 1).mean()) - 0.5) < 0.02)
 
 print("\n5. Output contract")
-r = detect(open(os.path.join(samples, "spill_1.png"), "rb").read(), filename="s.png")
+_first = sorted(f for f in os.listdir(samples) if f.endswith(".png"))[0]
+r = detect(open(os.path.join(samples, _first), "rb").read(), filename="s.png")
 for k in ("verdict", "confidence", "geojson", "overlay_png", "regions", "evidence",
           "estimated_area_km2", "class_share", "flagged", "reasons",
           "wind_state", "area_ratio", "dominance_ratio"):
