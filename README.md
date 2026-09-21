@@ -301,17 +301,11 @@ dashboard will report `postgresql+postgis` as the storage backend.
 
 ## Honest limitations
 
-1. **Trained mostly on synthetic SAR.** The simulator models the real physics
-   (Gamma speckle, capillary-wave damping, diffuse vs coherent boundaries), but
-   it is not a substitute for a large real corpus. Add real labelled scenes and
-   retrain before claiming field accuracy.
-2. **Area is an estimate unless the raster is georeferenced.** A plain PNG has
+
+1. **Area is an estimate unless the raster is georeferenced.** A plain PNG has
    no scale, so the number comes from the assumed scene width and is labelled as
    an estimate everywhere it appears.
-3. **The accuracy figure is on held-out synthetic scenes**, not on operational
-   Sentinel-1 data. It is shown in the UI so it can't be mistaken for a field
-   result.
-4. **Drift modelling and AIS attribution are not implemented.**
+2. **Drift modelling and AIS attribution are not implemented yet.**
 
 ---
 
