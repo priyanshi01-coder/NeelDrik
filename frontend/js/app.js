@@ -145,9 +145,15 @@
                 or click to browse · PNG, JPEG, GeoTIFF · max 25 MB</div>
               <input type="file" id="file" class="hidden" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp">
             </div>
-            <div id="chosen" class="chosenrow hidden">
-              <span class="mono" id="chosen-name"></span>
-              <button type="button" class="btn ghost sm" id="clearfile">Remove</button>
+            <!-- The scene, then what to do with it: the file and its Remove on
+                 the left, Analyse on the right, both directly under the drop
+                 zone so the action sits with the thing it acts on. -->
+            <div class="actionrow">
+              <div id="chosen" class="chosenrow hidden">
+                <span class="mono" id="chosen-name"></span>
+                <button type="button" class="btn ghost sm" id="clearfile">Remove</button>
+              </div>
+              <button class="btn" id="run" disabled>Analyse spill</button>
             </div>
 
             <h3 style="margin-top:20px">Or pick a sample scene</h3>
@@ -171,7 +177,6 @@
                 <input id="lon" type="number" placeholder="e.g. 71.8200" min="-180" max="180" step="0.0001">
               </div>
             </div>
-            <button class="btn" id="run" style="width:100%;margin-top:14px" disabled>Analyse spill</button>
             <div class="msg" id="dmsg"></div>
           </div>
         </div>
@@ -342,9 +347,18 @@
           verification, not verdicts.</p>
       </div>` : ''}
 
+      <!-- Two views of this scene and two places to take it, in one row: the
+           map is the dashboard, the back-track is Drift & origin. Both need a
+           position, so both are held shut until the scene has one. -->
       <div class="imgtabs">
         <button class="on" data-img="overlay">Detection overlay</button>
         <button data-img="scene">Original scene</button>
+        <button class="goto" id="to-dash"${r.scene_center ? '' : ' disabled'}
+          title="${r.scene_center ? 'See this slick on the dashboard map'
+                                  : 'Needs a scene centre'}">Map</button>
+        <button class="goto" id="to-map"${r.scene_center ? '' : ' disabled'}
+          title="${r.scene_center ? 'Back-track this slick to its source'
+                                  : 'Needs a scene centre'}">Back-track this slick</button>
       </div>
       <div class="imgwrap" style="margin-bottom:16px">
         <img id="resimg" src="${r.overlay_png}" alt="detection overlay">
@@ -391,13 +405,10 @@
       <div style="display:flex;gap:9px;margin-top:16px;flex-wrap:wrap">
         <button class="btn ghost sm" id="dl-json">Download JSON</button>
         <button class="btn ghost sm" id="dl-geo">Download GeoJSON</button>
-        <button class="btn ghost sm" id="to-map"${r.scene_center ? '' : ' disabled'}
-          title="${r.scene_center ? 'Back-track this slick to its source'
-                                  : 'Needs a scene centre'}">Back-track this slick</button>
       </div>`;
 
-    $$('#rescard .imgtabs button').forEach(b => b.onclick = () => {
-      $$('#rescard .imgtabs button').forEach(x => x.classList.remove('on'));
+    $$('#rescard .imgtabs button[data-img]').forEach(b => b.onclick = () => {
+      $$('#rescard .imgtabs button[data-img]').forEach(x => x.classList.remove('on'));
       b.classList.add('on');
       $('#resimg').src = b.dataset.img === 'scene' ? r.scene_png : r.overlay_png;
     });
@@ -413,6 +424,7 @@
     };
     $('#dl-geo').onclick = () => save(r.geojson, `neeldrik-${r.id}.geojson`);
     $('#to-map').onclick = () => { if (r.scene_center) go('drift'); };
+    $('#to-dash').onclick = () => { if (r.scene_center) go('ops'); };
   }
 
   // ------------------------------------------------------------------ //

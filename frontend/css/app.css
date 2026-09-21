@@ -1934,3 +1934,31 @@ label.btn{display:inline-flex;align-items:center;justify-content:center;cursor:p
 :root[data-theme="light"] td{color:var(--ink)}
 :root[data-theme="light"] .foot-bar,
 :root[data-theme="light"] footer a{color:#3A5673}
+
+/* ---- Detect: the scene's own action row ----------------------------------
+   The file chip and its Remove sit on the left, Analyse on the right, on one
+   line under the drop zone. With no file chosen the chip is hidden and the
+   button keeps its place at the right-hand end. ------------------------- */
+.actionrow{
+  display:flex;align-items:center;gap:12px;margin-top:10px
+}
+.actionrow #chosen{flex:1;min-width:0;margin-top:0}
+.actionrow #chosen.hidden{display:none}
+.actionrow #chosen.hidden ~ .btn{margin-left:auto}
+.actionrow > .btn{flex:none;width:auto;padding:12px 26px;margin-left:auto}
+@media(max-width:560px){
+  .actionrow{flex-wrap:wrap}
+  .actionrow > .btn{width:100%;margin-left:0}
+}
+
+/* The two right-hand entries in the image row are doors, not view toggles:
+   they never latch on, and they carry an arrow so that reads at a glance. */
+.imgtabs .goto{margin-left:auto}
+.imgtabs .goto + .goto{margin-left:0}
+.imgtabs .goto::after{content:" \2192";font-weight:700}
+.imgtabs .goto:disabled{opacity:.45;cursor:not-allowed}
+.imgtabs .goto:disabled:hover{color:var(--dim);border-color:var(--line)}
+@media(max-width:700px){.imgtabs .goto{margin-left:0}}
+
+/* The team's credit, at the right-hand end of the footer bar. */
+.foot-bar .byline{margin-left:auto;font-weight:600;letter-spacing:.02em}
