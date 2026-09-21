@@ -1857,3 +1857,33 @@ label.btn{display:inline-flex;align-items:center;justify-content:center;cursor:p
   box-shadow:0 1px 4px rgba(0,0,0,.35)
 }
 .samples button.located{border-color:rgba(34,211,238,.45)}
+
+/* ==========================================================================
+   The sidebar does not move, and can be put away
+   --------------------------------------------------------------------------
+   `position:sticky` kept losing to whatever made an ancestor a scroll
+   container, so on desktop the rail is simply FIXED: it cannot travel with
+   the page whatever else changes. The grid still reserves its column, and
+   `.main` is pinned to column 2 so the fixed rail leaving the flow does not
+   pull the content underneath it.
+   ========================================================================== */
+@media(min-width:881px){
+  .rail{
+    position:fixed;left:0;top:0;bottom:0;width:var(--rail);height:100vh;
+    overflow-y:auto;overscroll-behavior:contain;z-index:40;
+    transition:transform .24s var(--ease)
+  }
+  .main{grid-column:2}
+  body.rail-collapsed .shell{grid-template-columns:0 1fr}
+  body.rail-collapsed .rail{transform:translateX(-100%)}
+  body.rail-collapsed .main{grid-column:1/-1}
+}
+.railtoggle{
+  display:inline-grid;place-items:center;width:34px;height:34px;flex:none;
+  border-radius:9px;border:1px solid var(--line);background:var(--surface-2);
+  color:var(--dim);cursor:pointer;transition:color .2s,border-color .2s,background .2s
+}
+.railtoggle:hover{color:var(--ink);border-color:var(--c-accent)}
+.railtoggle svg{width:17px;height:17px}
+.topbar-left{display:flex;align-items:center;gap:13px}
+@media(max-width:880px){.railtoggle{display:none}}

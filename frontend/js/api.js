@@ -1,28 +1,41 @@
 /* Thin API client: token storage + fetch wrapper. */
 const API = (() => {
-  const KEY = 'neeldrik.token', UKEY = 'neeldrik.user';
+  const KEY = 'neeldrik.token', UKEY = 'neeldrik.user', DKEY = 'neeldrik.demo';
   let mem = { token: null, user: null };
 
-  function store(k, v) {
-    try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); }
-    catch (e) { /* private mode — fall back to memory */ }
+  /* A signed-in account is remembered across visits (localStorage). A DEMO
+     account is not: it lives in sessionStorage, so opening the site again
+     starts a brand-new empty demo instead of showing the last visit's
+     uploads. */
+  function box(demo) {
+    try { return demo ? sessionStorage : localStorage; } catch (e) { return null; }
   }
-  function read(k) {
-    try { return localStorage.getItem(k); } catch (e) { return null; }
+  function store(k, v, demo) {
+    try {
+      const b = box(demo); if (!b) return;
+      v === null ? b.removeItem(k) : b.setItem(k, v);
+    } catch (e) { /* private mode — fall back to memory */ }
   }
+  function read(k, demo) {
+    try { const b = box(demo); return b ? b.getItem(k) : null; } catch (e) { return null; }
+  }
+  function isDemo() { return read(DKEY, true) === '1'; }
 
-  function setSession(token, user) {
+  function setSession(token, user, demo) {
     mem.token = token; mem.user = user;
-    store(KEY, token); store(UKEY, JSON.stringify(user));
+    store(KEY, token, demo); store(UKEY, JSON.stringify(user), demo);
+    store(DKEY, demo ? '1' : null, true);
   }
   function clearSession() {
     mem = { token: null, user: null };
     store(KEY, null); store(UKEY, null);
+    store(KEY, null, true); store(UKEY, null, true); store(DKEY, null, true);
   }
-  function token() { return mem.token || read(KEY); }
+  function token() { return mem.token || read(KEY, true) || read(KEY); }
   function user() {
     if (mem.user) return mem.user;
-    try { return JSON.parse(read(UKEY) || 'null'); } catch (e) { return null; }
+    try { return JSON.parse(read(UKEY, true) || read(UKEY) || 'null'); }
+    catch (e) { return null; }
   }
 
   async function req(path, { method = 'GET', body, form } = {}) {
@@ -47,7 +60,7 @@ const API = (() => {
   }
 
   return {
-    setSession, clearSession, token, user, req,
+    setSession, clearSession, token, user, isDemo, req,
     health: () => req('/api/health'),
     model: () => req('/api/model'),
     register: (b) => req('/api/auth/register', { method: 'POST', body: b }),

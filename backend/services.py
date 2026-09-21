@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import secrets
 import time
 
 from . import database as db
@@ -61,21 +62,24 @@ def _session(uid, email, name, org):
     }
 
 
-DEMO_EMAIL = "demo@neeldrik.in"
+DEMO_DOMAIN = "demo.neeldrik.in"
 
 
 def demo_session():
-    """Sign in (creating on first use) the shared demo account.
+    """Open a FRESH demo account for this visit.
 
-    A public demo URL that opens on a login form gets closed. This keeps the
-    deployed link usable by anyone while real accounts still work normally.
+    A public demo URL that opens on a login form gets closed, so visitors are
+    signed in automatically. It used to be one shared account, which meant
+    every visitor saw the previous visitor's uploads sitting on the dashboard
+    -- and saw them again on their own next visit. Each visit now gets its own
+    empty account, so the console always starts clean and nobody sees anyone
+    else's scenes.
     """
-    u = db.get_user(DEMO_EMAIL)
-    if not u:
-        uid = db.create_user(DEMO_EMAIL, "Demo Analyst", "NEELDRIK demo",
-                             hash_password("demo-" + make_token({"sub": 0})[:24]))
-        return _session(uid, DEMO_EMAIL, "Demo Analyst", "NEELDRIK demo")
-    return _session(u["id"], u["email"], u["name"], u["org"])
+    tag = secrets.token_hex(8)
+    email = f"demo-{tag}@{DEMO_DOMAIN}"
+    uid = db.create_user(email, "Demo Analyst", "NEELDRIK demo",
+                         hash_password(secrets.token_urlsafe(24)))
+    return _session(uid, email, "Demo Analyst", "NEELDRIK demo")
 
 
 def user_from_auth(header: str | None):

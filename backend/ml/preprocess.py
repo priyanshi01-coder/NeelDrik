@@ -88,12 +88,116 @@ def read_rgb(data: bytes, cap: int = 1400):
         im.load()
         im = im.convert("RGB")
     except Exception:
-        return None
+        im = _geotiff_preview(data)     # a float32 GeoTIFF PIL cannot open
+        if im is None:
+            return None
     w, h = im.size
     if w > cap or h > cap:
         l, t = max(0, (w - cap) // 2), max(0, (h - cap) // 2)
         im = im.crop((l, t, min(w, l + cap), min(h, t + cap)))
     return np.asarray(im)
+
+
+# --------------------------------------------------------------------------- #
+# A GeoTIFF reader that needs no GDAL
+def _geotiff_preview(data: bytes):
+    """An 8-bit RGB view of a plain GeoTIFF, for the domain check only.
+
+    PIL cannot open a two-band float32 Sigma0 export, and without this the
+    domain gate refuses a real Sentinel-1 product as "not an image".
+    """
+    got = _plain_geotiff(data)
+    if got is None:
+        return None
+    a = got[0]
+    if a.ndim == 3:
+        a = a[..., 0]
+    a = a.astype(np.float32)
+    valid = np.isfinite(a) & (a != 0.0)
+    if not valid.any():
+        return None
+    lo, hi = np.percentile(a[valid], [2.0, 98.0])
+    hi = hi if hi - lo > 1e-6 else lo + 1e-6
+    filled = np.where(valid, a, np.median(a[valid]))
+    u8 = (np.clip((filled - lo) / (hi - lo), 0, 1) * 255).astype(np.uint8)
+    return Image.fromarray(np.stack([u8] * 3, -1))
+
+
+# --------------------------------------------------------------------------- #
+_TIFF_FMT = {1: 'B', 2: 's', 3: 'H', 4: 'I', 6: 'b', 8: 'h', 9: 'i', 11: 'f', 12: 'd'}
+_TIFF_SZ = {1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8}
+
+
+def _plain_geotiff(data: bytes):
+    """Pixels + WGS84 footprint from an uncompressed, strip-based GeoTIFF.
+
+    rasterio is deliberately left out of the deployed build -- GDAL is far too
+    big for a free instance -- but a Sentinel-1 export still carries its own
+    coordinates, and throwing them away would force the analyst to type a
+    position the file already knows. This reads the handful of tags needed for
+    that: the tie point and the pixel scale. Anything unusual returns None and
+    the caller falls back to the ordinary image path.
+    """
+    import struct
+    if data[:2] not in (b'II', b'MM'):
+        return None
+    bo = '<' if data[:2] == b'II' else '>'
+    try:
+        if struct.unpack_from(bo + 'H', data, 2)[0] != 42:
+            return None                                  # BigTIFF, not ours
+        ifd = struct.unpack_from(bo + 'I', data, 4)[0]
+        n = struct.unpack_from(bo + 'H', data, ifd)[0]
+        t = {}
+        for i in range(n):
+            e = ifd + 2 + i * 12
+            tag, typ, cnt = struct.unpack_from(bo + 'HHI', data, e)
+            size = _TIFF_SZ.get(typ, 1) * cnt
+            vo = e + 8 if size <= 4 else struct.unpack_from(bo + 'I', data, e + 8)[0]
+            if typ == 2:
+                t[tag] = data[vo:vo + cnt].split(b'\0')[0].decode('latin1', 'replace')
+            else:
+                t[tag] = list(struct.unpack_from(bo + _TIFF_FMT.get(typ, 'B') * cnt,
+                                                 data, vo))
+        if 33550 not in t or 33922 not in t:
+            return None                                  # no georeferencing: not ours
+        if t.get(259, [1])[0] != 1 or 273 not in t:
+            return None                                  # compressed or tiled
+        w, h = t[256][0], t[257][0]
+        if w * h > MAX_PIXELS:
+            raise BadImage("raster too large")
+        spp, bits, sfmt = t.get(277, [1])[0], t[258][0], t.get(339, [1])[0]
+        dt = {(32, 3): np.float32, (32, 1): np.uint32, (16, 1): np.uint16,
+              (8, 1): np.uint8, (8, 2): np.int8, (16, 2): np.int16}.get((bits, sfmt))
+        if dt is None:
+            return None
+        buf = b''.join(data[o:o + c] for o, c in zip(t[273], t[279]))
+        arr = np.frombuffer(buf, dtype=np.dtype(dt).newbyteorder(bo))
+        if arr.size < w * h * spp:
+            return None
+        arr = arr[:w * h * spp].reshape(h, w, spp) if spp > 1 else arr[:w * h].reshape(h, w)
+
+        sx, sy = float(t[33550][0]), float(t[33550][1])
+        i, j, _k, x, y, _z = (float(v) for v in t[33922][:6])
+        west, north = x - i * sx, y + j * sy
+        crs = (t.get(34737, '') or '').strip('|').strip()
+        # A geographic CRS gives degrees; convert to a ground size so the area
+        # estimate stays in km^2. Everything else is treated as metres.
+        if abs(sx) < 1.0 and abs(west) <= 180.0 and abs(north) <= 90.0:
+            lat = north - h * sy / 2.0
+            per_px = float(np.sqrt(abs(sx) * np.cos(np.radians(lat)) * abs(sy))) * 111_320.0
+            crs = crs or 'WGS 84'
+            if '4326' not in crs:
+                crs = f'EPSG:4326 ({crs})' if crs else 'EPSG:4326'
+        else:
+            per_px = abs(sx)
+        geo = {"georeferenced": True, "crs": crs,
+               "transform": [sx, 0.0, west, 0.0, -sy, north],
+               "pixel_size_m": per_px}
+        return arr, geo
+    except BadImage:
+        raise
+    except Exception:
+        return None
 
 
 def read_raster(data: bytes):
@@ -116,6 +220,18 @@ def read_raster(data: bytes):
             raise
         except Exception:
             pass                        # not a GeoTIFF -> ordinary image path
+
+    plain = _plain_geotiff(data)        # no GDAL needed for the common case
+    if plain is not None:
+        band, geo = plain
+        if band.ndim == 3:              # pick VV: over ocean it sits above VH
+            meds = []
+            for c in range(band.shape[-1]):
+                ch = band[..., c]
+                v = ch[np.isfinite(ch) & (ch != 0.0)]
+                meds.append(float(np.median(v)) if v.size else -np.inf)
+            band = band[..., int(np.argmax(meds))]
+        return band.astype(np.float32), geo
 
     try:
         im = Image.open(io.BytesIO(data))

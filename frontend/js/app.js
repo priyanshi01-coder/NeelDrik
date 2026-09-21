@@ -169,21 +169,12 @@
               </div>
             </div>
             <button class="btn" id="run" style="width:100%;margin-top:14px" disabled>Analyse spill</button>
-
-            <div class="dimmer" style="font-size:12px;margin-top:10px;line-height:1.65">
-              <b>Scene centre</b> is where this image was taken. A GeoTIFF carries
-              its own coordinates and they are used automatically; a PNG or JPEG
-              carries none, so without these two numbers the slick cannot be put
-              on a map and the system will say so instead of guessing a location.<br><br>
-              <b>Scene width</b> is used only for the area estimate when the raster
-              carries no CRS. <b>Wind</b> is the strongest physical check available:
-              below 3 m/s a glassy sea makes dark patches that mimic oil, and above
-              12 m/s a real slick breaks up. Leave it blank if you do not know it.
-            </div>
             <div class="msg" id="dmsg"></div>
-          </div>
-          <div class="card">
-            <h3>Or try a sample scene</h3>
+
+            <h3 style="margin-top:20px">Or pick a located sample scene</h3>
+            <p class="dim" style="font-size:12.5px;margin:2px 0 0">
+              Real Sentinel-1 scenes the model has never seen. Each one carries the
+              coordinates it was actually acquired at, so it maps itself.</p>
             <div class="samples" id="samples"><span class="dim">loading…</span></div>
             <div class="msg ok hidden" id="samplenote"></div>
           </div>
@@ -524,26 +515,28 @@
             <div><label for="d-lon">Slick longitude <span class="dim">— from the scene</span></label>
               <input id="d-lon" type="number" step="0.0001" placeholder="e.g. 71.8200"
                      value="${c ? c.lon.toFixed(4) : ''}"></div>
-            <div><label for="d-ws">Wind speed (m/s) <span class="dim">— from the scene</span></label>
-              <input id="d-ws" type="number" step="0.1" placeholder="unknown"
-                     value="${windFromScene}"></div>
-            <div><label for="d-wd">Wind FROM (deg) <span class="dim">— you supply</span></label>
-              <input id="d-wd" type="number" step="1" placeholder="0–360"></div>
-            <div><label for="d-cs">Current speed (m/s) <span class="dim">— you supply</span></label>
-              <input id="d-cs" type="number" step="0.01" placeholder="e.g. 0.25"></div>
-            <div><label for="d-cd">Current TOWARDS (deg) <span class="dim">— you supply</span></label>
-              <input id="d-cd" type="number" step="1" placeholder="0–360"></div>
+            <div><label for="d-ws">Wind speed (m/s) <span class="dim">— ${
+                windFromScene === '' ? 'assumed' : 'from the scene'}</span></label>
+              <input id="d-ws" type="number" step="0.1"
+                     value="${windFromScene === '' ? 6 : windFromScene}"></div>
+            <div><label for="d-wd">Wind FROM (deg) <span class="dim">— assumed</span></label>
+              <input id="d-wd" type="number" step="1" value="225"></div>
+            <div><label for="d-cs">Current speed (m/s) <span class="dim">— assumed</span></label>
+              <input id="d-cs" type="number" step="0.01" value="0.30"></div>
+            <div><label for="d-cd">Current TOWARDS (deg) <span class="dim">— assumed</span></label>
+              <input id="d-cd" type="number" step="1" value="250"></div>
             <div><label for="d-h">Elapsed times (hours)</label>
               <input id="d-h" type="text" value="6, 12, 24"></div>
             <div><label for="d-k">Diffusivity (m²/s)</label>
               <input id="d-k" type="number" step="0.5" value="5"></div>
           </div>
           <p class="dimmer" style="font-size:12px;line-height:1.65;margin:12px 0 0">
-            The first three fields come from the scene you analysed. Wind direction,
-            current speed and current direction are <b>not</b> in a SAR image and this
-            build has no met-ocean feed, so you enter them — from INCOIS, ERA5 or a
-            ship report. They are left blank rather than pre-filled, because a number
-            you did not choose would look like a measurement.
+            The position comes from the scene you analysed, and so does the wind speed
+            when you supplied one. The fields marked <b>assumed</b> are a stated
+            reference case, not a measurement: wind direction and current are not in a
+            SAR image and this build has no met-ocean feed. They are filled so the
+            back-track runs out of the box — replace them with real values from INCOIS,
+            ERA5 or a ship report before quoting a result.
           </p>
           <div style="display:flex;gap:9px;margin-top:14px;flex-wrap:wrap">
             <button class="btn" id="d-run" style="width:auto;padding:11px 22px">Back-track</button>
@@ -565,6 +558,10 @@
       a.style.cursor = 'pointer';
       a.onclick = () => go(a.dataset.goto);
     });
+
+    /* With a position in hand there is nothing left to decide, so run it. The
+       user asked for the origin, not for a form to submit. */
+    if (c) setTimeout(() => $('#d-run').click(), 60);
 
     $('#d-verify').onclick = async () => {
       const v = await API.driftVerify();
@@ -978,7 +975,7 @@
      so the dashboard is the first thing they see, not a sign-in form. */
   const session = API.token()
     ? Promise.resolve()
-    : API.demo().then(d => API.setSession(d.token, d.user));
+    : API.demo().then(d => API.setSession(d.token, d.user, true));
 
   session.then(() => API.me()).then(r => {
     const label = r.user.name || r.user.email;

@@ -126,7 +126,7 @@
           <div class="card spillcard ${hasSpill ? '' : 'idle'}">
             <div class="cardtop">
               <h3 class="ttl"><i class="ic red">${IC.alert}</i>${
-                hasSpill ? 'Spill Detected' : 'No Active Spill'}</h3>
+                hasSpill ? 'Spill Detected' : 'No scene analysed yet'}</h3>
               ${hasSpill ? `<span class="pill ${pillClass(p.verdict)}">${pillText(p.verdict)}</span>` : ''}
             </div>
             ${hasSpill ? `
@@ -150,9 +150,12 @@
               </div>
               ${(p.reasons || []).length ? `<ul class="reasonlist">
                  ${p.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
-            ` : `<div class="empty" style="padding:26px 12px">
-                   Nothing analysed yet.<br>
-                   <button class="btn sm" id="ops-first" style="margin-top:12px">Analyse a scene</button>
+            ` : `<div class="empty" style="padding:24px 14px;line-height:1.7">
+                   <b style="color:var(--ink)">No image uploaded yet.</b><br>
+                   Upload a Sentinel-1 scene, or pick one of the located sample
+                   scenes, and the verdict, the slick outline and its position
+                   appear here.
+                   <button class="btn sm" id="ops-first" style="margin-top:14px">Upload a scene</button>
                  </div>`}
           </div>
 
