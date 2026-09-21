@@ -1,18 +1,8 @@
 {
-  "_comment": "Located sample scenes. Every lat/lon is the CENTRE of the window cut from a real Sentinel-1 scene, read from that scene's own WGS 84 tie point and pixel scale -- not assumed and not typed by hand. Picking a sample fills these into the upload form, so the map and the back-track start from the real place. Scenes come from the held-out test split, so the model was never trained on them. `truth` is the dataset's own class for the scene. It is kept here for the regression tests and is NOT served to the console: a sample must not show its answer before it is run.",
+  "_comment": "Located sample scenes. Every lat/lon is the CENTRE of the window cut from a real Sentinel-1 scene, read from that scene's own WGS 84 tie point and pixel scale -- not assumed and not typed by hand. Picking a sample fills these into the upload form, so the map and the back-track start from the real place. Scenes come from the held-out test split, so the model was never trained on them. `truth` is the dataset's own class for the scene. It is kept here for the regression tests and is NOT served to the console: a sample must not show its answer before it is run. Order is deliberate: the oil scenes lead and the look-alike and clean ones sit between them.",
   "samples": [
     {
       "file": "scene_01.png",
-      "name": "North Pacific, off Washington",
-      "lat": 46.735,
-      "lon": -125.98842,
-      "scene_km": 7.02,
-      "geo_source": "from the scene's own GeoTIFF coordinates (WGS 84)",
-      "source": "Sentinel-1 C-band SAR - Trujillo-Acatitla et al. (2024) held-out test set",
-      "truth": "clean"
-    },
-    {
-      "file": "scene_02.png",
       "name": "Persian Gulf, near the Strait of Hormuz",
       "lat": 25.75301,
       "lon": 55.18193,
@@ -22,17 +12,7 @@
       "truth": "spill"
     },
     {
-      "file": "scene_03.png",
-      "name": "Baltic Sea, north of Aland",
-      "lat": 59.7005,
-      "lon": 20.06509,
-      "scene_km": 5.17,
-      "geo_source": "from the scene's own GeoTIFF coordinates (WGS 84)",
-      "source": "Sentinel-1 C-band SAR - Trujillo-Acatitla et al. (2024) held-out test set",
-      "truth": "lookalike"
-    },
-    {
-      "file": "scene_04.png",
+      "file": "scene_02.png",
       "name": "Malacca Strait, off northern Sumatra",
       "lat": 4.27766,
       "lon": 98.41096,
@@ -42,17 +22,7 @@
       "truth": "spill"
     },
     {
-      "file": "scene_05.png",
-      "name": "Gulf of Mexico, off the Mississippi Delta",
-      "lat": 28.91387,
-      "lon": -88.82955,
-      "scene_km": 17.93,
-      "geo_source": "from the scene's own GeoTIFF coordinates (WGS 84)",
-      "source": "Sentinel-1 C-band SAR - Trujillo-Acatitla et al. (2024) held-out test set",
-      "truth": "spill"
-    },
-    {
-      "file": "scene_06.png",
+      "file": "scene_03.png",
       "name": "North Pacific, off Oregon",
       "lat": 45.18568,
       "lon": -124.09127,
@@ -62,7 +32,7 @@
       "truth": "lookalike"
     },
     {
-      "file": "scene_07.png",
+      "file": "scene_04.png",
       "name": "Mediterranean, off Port Said (Suez approach)",
       "lat": 31.41787,
       "lon": 32.45593,
@@ -70,6 +40,36 @@
       "geo_source": "from the scene's own GeoTIFF coordinates (WGS 84)",
       "source": "Sentinel-1 C-band SAR - Trujillo-Acatitla et al. (2024) held-out test set",
       "truth": "spill"
+    },
+    {
+      "file": "scene_05.png",
+      "name": "Mediterranean, off Latakia",
+      "lat": 35.69878,
+      "lon": 35.57413,
+      "scene_km": 8.32,
+      "geo_source": "from the scene's own GeoTIFF coordinates (WGS 84)",
+      "source": "Sentinel-1 C-band SAR - Trujillo-Acatitla et al. (2024) held-out test set",
+      "truth": "clean"
+    },
+    {
+      "file": "scene_06.png",
+      "name": "Gulf of Mexico, off the Mississippi Delta",
+      "lat": 28.91387,
+      "lon": -88.82955,
+      "scene_km": 17.93,
+      "geo_source": "from the scene's own GeoTIFF coordinates (WGS 84)",
+      "source": "Sentinel-1 C-band SAR - Trujillo-Acatitla et al. (2024) held-out test set",
+      "truth": "spill"
+    },
+    {
+      "file": "scene_07.png",
+      "name": "Baltic Sea, north of Aland",
+      "lat": 59.7005,
+      "lon": 20.06509,
+      "scene_km": 5.17,
+      "geo_source": "from the scene's own GeoTIFF coordinates (WGS 84)",
+      "source": "Sentinel-1 C-band SAR - Trujillo-Acatitla et al. (2024) held-out test set",
+      "truth": "lookalike"
     },
     {
       "file": "scene_08.png",
@@ -83,6 +83,16 @@
     },
     {
       "file": "scene_09.png",
+      "name": "North Pacific, off Washington",
+      "lat": 46.735,
+      "lon": -125.98842,
+      "scene_km": 7.02,
+      "geo_source": "from the scene's own GeoTIFF coordinates (WGS 84)",
+      "source": "Sentinel-1 C-band SAR - Trujillo-Acatitla et al. (2024) held-out test set",
+      "truth": "clean"
+    },
+    {
+      "file": "scene_10.png",
       "name": "Northern Persian Gulf, off Kuwait",
       "lat": 28.51909,
       "lon": 48.68171,
@@ -90,16 +100,6 @@
       "geo_source": "from the scene's own GeoTIFF coordinates (WGS 84)",
       "source": "Sentinel-1 C-band SAR - Trujillo-Acatitla et al. (2024) held-out test set",
       "truth": "spill"
-    },
-    {
-      "file": "scene_10.png",
-      "name": "Mediterranean, off Latakia",
-      "lat": 35.69878,
-      "lon": 35.57413,
-      "scene_km": 8.32,
-      "geo_source": "from the scene's own GeoTIFF coordinates (WGS 84)",
-      "source": "Sentinel-1 C-band SAR - Trujillo-Acatitla et al. (2024) held-out test set",
-      "truth": "clean"
     }
   ]
 }

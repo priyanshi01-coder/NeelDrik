@@ -1326,7 +1326,7 @@ table.vessels td span{display:block;font-size:10.5px}
    Full-width system header (matches the design's top bar)
    ========================================================================== */
 .apphead{
-  position:sticky;top:0;z-index:40;
+  position:sticky;top:0;z-index:60;
   display:flex;align-items:center;gap:22px;
   padding:11px clamp(14px,2vw,22px);
   background:var(--glass);border-bottom:1px solid var(--line);
@@ -1869,8 +1869,9 @@ label.btn{display:inline-flex;align-items:center;justify-content:center;cursor:p
    ========================================================================== */
 @media(min-width:881px){
   .rail{
-    position:fixed;left:0;top:0;bottom:0;width:var(--rail);height:100vh;
-    overflow-y:auto;overscroll-behavior:contain;z-index:40;
+    position:fixed;left:0;top:var(--head,67px);bottom:0;width:var(--rail);
+    height:calc(100vh - var(--head,67px));
+    overflow-y:auto;overscroll-behavior:contain;z-index:30;
     transition:transform .24s var(--ease)
   }
   .main{grid-column:2}
@@ -1887,3 +1888,49 @@ label.btn{display:inline-flex;align-items:center;justify-content:center;cursor:p
 .railtoggle svg{width:17px;height:17px}
 .topbar-left{display:flex;align-items:center;gap:13px}
 @media(max-width:880px){.railtoggle{display:none}}
+
+/* --------------------------------------------------------------------------
+   The header owns the top strip
+   The rail is fixed, so without this it starts at y=0 and paints over the
+   left end of the header -- the logo and the title disappeared underneath it.
+   `--head` is written by app.html from the header's measured height on load
+   and on resize, so the rail always begins exactly where the header ends.
+   -------------------------------------------------------------------------- */
+@media(min-width:881px){
+  .shell{min-height:calc(100vh - var(--head,67px))}
+}
+
+/* ==========================================================================
+   Light theme: readable, not washed out
+   --------------------------------------------------------------------------
+   The light palette's greys were mixed for a bright screen in a dark room;
+   on a laptop in daylight the secondary text almost vanished. Every text
+   token is taken several steps darker here, and the handful of places that
+   hard-code a muted blue are brought with them. Backgrounds, accents and the
+   dark theme are untouched -- this changes contrast only.
+   ========================================================================== */
+:root[data-theme="light"]{
+  --ink:#06192F;
+  --dim:#3A5673;
+  --dimmer:#566F89;
+  --line:rgba(6,25,47,.16);
+  --line-hard:rgba(6,25,47,.3);
+  --t-accent:#1B5C9E;
+  --t-spill:#A81528;
+  --t-review:#8A4008;
+  --t-clean:#036249;
+}
+:root[data-theme="light"] body{color:var(--ink)}
+:root[data-theme="light"] .rail nav a{color:#2E4566}
+:root[data-theme="light"] .dim{color:#3A5673}
+:root[data-theme="light"] .dimmer{color:#566F89}
+:root[data-theme="light"] label,
+:root[data-theme="light"] .kv .k,
+:root[data-theme="light"] .apphead-title p,
+:root[data-theme="light"] th{color:#3A5673}
+:root[data-theme="light"] .rail nav a.soon{opacity:.62}
+:root[data-theme="light"] p,
+:root[data-theme="light"] li,
+:root[data-theme="light"] td{color:var(--ink)}
+:root[data-theme="light"] .foot-bar,
+:root[data-theme="light"] footer a{color:#3A5673}

@@ -150,7 +150,10 @@
               <button type="button" class="btn ghost sm" id="clearfile">Remove</button>
             </div>
 
-            <div class="grid g2" style="gap:12px;margin-top:14px">
+            <h3 style="margin-top:20px">Or pick a sample scene</h3>
+            <div class="samples" id="samples"><span class="dim">loading…</span></div>
+
+            <div class="grid g2" style="gap:12px;margin-top:18px">
               <div>
                 <label for="km">Assumed scene width (km)</label>
                 <input id="km" type="number" value="40" min="1" max="500" step="1">
@@ -170,13 +173,6 @@
             </div>
             <button class="btn" id="run" style="width:100%;margin-top:14px" disabled>Analyse spill</button>
             <div class="msg" id="dmsg"></div>
-
-            <h3 style="margin-top:20px">Or pick a located sample scene</h3>
-            <p class="dim" style="font-size:12.5px;margin:2px 0 0">
-              Real Sentinel-1 scenes the model has never seen. Each one carries the
-              coordinates it was actually acquired at, so it maps itself.</p>
-            <div class="samples" id="samples"><span class="dim">loading…</span></div>
-            <div class="msg ok hidden" id="samplenote"></div>
           </div>
         </div>
         <div class="card" id="rescard">
@@ -280,22 +276,15 @@
       D.label = b.dataset.name + ' · sample';
       showChosen(D.label);
       b.classList.add('on');
-      /* A located sample brings its real coordinates with it. Filling them in
-         is what makes the map and the back-track show the true place, instead
-         of whatever happened to be typed last. */
+      /* A located sample brings its real coordinates with it. They go into the
+         form fields, which is where they are an input -- the place itself is
+         named on the dashboard map once the scene has been analysed, not
+         announced here before the detector has run. */
       const put = (id, v) => {
         if (v !== '' && v != null) { $('#' + id).value = v; D[id] = v; }
       };
       put('lat', b.dataset.lat); put('lon', b.dataset.lon);
       put('km', b.dataset.km);   put('wind', b.dataset.wind);
-      const note = $('#samplenote');
-      if (note) {
-        note.classList.toggle('hidden', !b.dataset.lat);
-        if (b.dataset.lat)
-          note.innerHTML = '<b>' + esc(b.dataset.place || 'Located scene') + '</b> \u2014 '
-            + esc(b.dataset.lat) + ', ' + esc(b.dataset.lon)
-            + (b.dataset.src ? '<br><span class="dimmer">' + esc(b.dataset.src) + '</span>' : '');
-      }
     });
     if (D.file) showChosen(D.label);
   }

@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="/static/css/app.css?v=202609212050">
+<link rel="stylesheet" href="/static/css/app.css?v=202609212240">
 </head>
 <body>
 
@@ -144,7 +144,6 @@
         </div>
       </div>
       <div class="foot-bar">
-        <span>© 2026 Team HackSmiths · NeelDrik</span>
         <span class="dimmer">Prototype — every verdict requires operator verification.</span>
       </div>
     </footer>
@@ -153,9 +152,9 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/static/js/api.js?v=202609212050"></script>
-<script src="/static/js/ops.js?v=202609212050"></script>
-<script src="/static/js/app.js?v=202609212050"></script>
+<script src="/static/js/api.js?v=202609212240"></script>
+<script src="/static/js/ops.js?v=202609212240"></script>
+<script src="/static/js/app.js?v=202609212240"></script>
 <script>
 /* Off-canvas drawer + footer routing. Kept out of app.js so the view layer
    stays the single owner of rendering. */
@@ -183,6 +182,17 @@
 
   /* Desktop: collapse the sidebar out of the way. Remembered between visits,
      because someone who wants the extra width wants it every time. */
+  /* The rail is fixed on desktop, so it needs to know where the header ends.
+     Measured rather than hard-coded: the header grows when the title wraps. */
+  var head = document.querySelector('.apphead');
+  function headHeight() {
+    var h = head ? Math.round(head.getBoundingClientRect().height) : 67;
+    document.documentElement.style.setProperty('--head', h + 'px');
+  }
+  headHeight();
+  addEventListener('resize', headHeight);
+  addEventListener('load', headHeight);
+
   var railBtn = document.getElementById('railtoggle');
   function setCollapsed(on) {
     document.body.classList.toggle('rail-collapsed', on);
