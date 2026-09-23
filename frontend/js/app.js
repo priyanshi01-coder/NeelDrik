@@ -48,7 +48,7 @@
   };
 
   function go(name) {
-    if (!VIEWS[name]) name = 'ops';
+    if (!VIEWS[name]) name = 'detect';
     $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.view === name));
     $('#vtitle').textContent = VIEWS[name].title;
     $('#crumb').textContent = 'NEELDRIK / ' + VIEWS[name].title;
@@ -998,6 +998,6 @@
       const tick = () => clk.textContent = new Date().toLocaleString();
       tick(); setInterval(tick, 30000);
     }
-    go(location.hash.slice(1) || 'ops');
+    go(location.hash.slice(1) || 'detect');
   }).catch(() => { API.clearSession(); location.replace('/login'); });
 })();

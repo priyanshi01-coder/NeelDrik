@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="/static/css/app.css?v=202609212330">
+<link rel="stylesheet" href="/static/css/app.css?v=202609232345">
 </head>
 <body>
 
@@ -63,10 +63,10 @@
   <aside class="rail" id="rail">
 
     <nav id="nav" aria-label="Main">
-      <a data-view="ops" class="on">
+      <a data-view="ops">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
         Dashboard</a>
-      <a data-view="detect">
+      <a data-view="detect" class="on">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         Spill Detection</a>
       <a data-view="drift">
@@ -153,9 +153,9 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/static/js/api.js?v=202609212330"></script>
-<script src="/static/js/ops.js?v=202609212330"></script>
-<script src="/static/js/app.js?v=202609212330"></script>
+<script src="/static/js/api.js?v=202609232345"></script>
+<script src="/static/js/ops.js?v=202609232345"></script>
+<script src="/static/js/app.js?v=202609232345"></script>
 <script>
 /* Off-canvas drawer + footer routing. Kept out of app.js so the view layer
    stays the single owner of rendering. */
