@@ -998,6 +998,12 @@
       const tick = () => clk.textContent = new Date().toLocaleString();
       tick(); setInterval(tick, 30000);
     }
-    go(location.hash.slice(1) || 'detect');
+    /* The link people actually open (a bookmark, the one shared for the demo)
+       may already carry #ops from before this changed. An empty hash and an
+       explicit #ops both mean "just opened it" -- both land on Detect spill.
+       Navigating there afterwards via the sidebar still shows the dashboard
+       normally, since this only runs once, on load. */
+    const opening = location.hash.slice(1);
+    go(!opening || opening === 'ops' ? 'detect' : opening);
   }).catch(() => { API.clearSession(); location.replace('/login'); });
 })();
